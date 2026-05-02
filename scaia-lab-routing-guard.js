@@ -1,4 +1,4 @@
-/* Strong guard: Lab Interpreter opens only for explicit upload/image/file analysis intent */
+/* Final routing guard: block only explanation/clinical questions, allow real upload/analyze requests */
 (function () {
   let lastChatText = "";
 
@@ -9,62 +9,38 @@
            document.querySelector("textarea[placeholder*='SCAIA']");
   }
 
-  function isClinicalReasoning(text) {
+  function shouldBlockLab(text) {
     const q = String(text || "").toLowerCase();
 
-    return (
-      /patient|scd|voc|severe pain|egfr|spo2|acs|suspected acs|renal|respiratory|opioid|morphine|hydromorphone|fentanyl|tramadol|codeine|fluoxetine|paroxetine|phenoconversion|model output|accept|override|recommendation|safety|clinical reasoning/.test(q) ||
-      /مريض|ألم|الم|كلية|تنفس|أكسجين|اكسجين|مورفين|هيدرومورفون|فنتانيل|ترامادول|كودايين|توصية|سلامة|هل يفتح|يفتح اللاب|يجاوب|قرار|اختيار المسكن/.test(q)
-    );
-  }
+    if (/do not analyze|don't analyze|not analyze|without analyzing|no analysis|لا تحلل|بدون تحليل|مو تحليل/.test(q)) return true;
 
-  function asksAboutLabRouting(text) {
-    const q = String(text || "").toLowerCase();
+    if (/explain|logic|workflow|algorithm|method|principle|how does|how it works|why|rationale|اشرح|شرح|اللوجيك|الخوارزم|الطريقة|كيف يشتغل|كيف يحلل|وش المنطق/.test(q)) return true;
 
-    return (
-      /should scaia open|should.*open.*lab|whether.*open.*lab|when.*open.*lab|open the lab interpreter|open lab interpreter/.test(q) ||
-      /هل.*يفتح.*لاب|متى.*يفتح.*لاب|يفتح.*لاب.*ولا|يفتح.*lab|هل يفتح lab/.test(q)
-    );
-  }
+    if (/patient|scd|voc|egfr|spo2|acs|opioid|morphine|hydromorphone|fentanyl|tramadol|codeine|fluoxetine|paroxetine|phenoconversion|accept or override|model output|clinical reasoning/.test(q)) return true;
 
-  function asksExplanation(text) {
-    const q = String(text || "").toLowerCase();
+    if (/should scaia open|open the lab interpreter\?|should.*open.*lab|whether.*open.*lab|متى يفتح|هل يفتح|يفتح اللاب/.test(q)) return true;
 
-    return (
-      /explain|logic|workflow|algorithm|method|why|how|should|compare|rationale|what should|did you use|copy code|gelanalyzer|gelgenie/.test(q) ||
-      /اشرح|شرح|اللوجيك|الخوارزم|الطريقة|ليش|ليه|كيف|وش|هل|مقارنة|كود|استخدمتوا|نسختوا/.test(q)
-    );
+    return false;
   }
 
   function hasExplicitLabAnalysisIntent(text) {
     const q = String(text || "").toLowerCase();
 
     const action =
-      /upload|analyze|analyse|interpret|read|scan|test|check/.test(q) ||
-      /ارفع|أرفع|رفع|حلل|أحلل|احلل|اقرأ|اقرا|افحص|اختبر/.test(q);
+      /i want to analyze|i need to analyze|i want to upload|i need to upload|i have a|i have an|analyze a|analyze an|analyze this|analyse a|analyse an|interpret a|interpret an|interpret this|read a|read an|read this|upload a|upload an|scan a|scan an|test a|test an|check a|check an/.test(q) ||
+      /أبي أحلل|ابي احلل|أبغى أحلل|ابغى احلل|عندي صورة|عندي تحليل|أبي أرفع|ابي ارفع|حلل هذه|حلل هذي|حلل الصورة|اقرأ الصورة|اقرا الصورة|افحص الصورة|اختبر الصورة/.test(q);
 
     const object =
-      /image|file|photo|picture|screenshot|chromatogram|gel|qpcr|hrm|cnv|ngs|allelic|assay result|lab result|dna result/.test(q) ||
-      /صورة|ملف|سكرين|لقطة|تحليل|نتيجة|جل|لاب|مختبر|كروماتوجرام|منحنى/.test(q);
+      /image|file|photo|picture|screenshot|chromatogram|gel|qpcr|hrm|cnv|ngs|assay result|lab result|dna result/.test(q) ||
+      /صورة|ملف|لقطة|تحليل|نتيجة|جل|مختبر|كروماتوجرام|منحنى/.test(q);
 
     return action && object;
   }
 
   function shouldOpenLab(text) {
-    const q = String(text || "");
-
-    if (!q.trim()) return false;
-
-    // Questions ABOUT whether to open lab should be answered in chat, not open lab.
-    if (asksAboutLabRouting(q)) return false;
-
-    // Clinical reasoning must stay in chat.
-    if (isClinicalReasoning(q)) return false;
-
-    // Explanation/method questions stay in chat unless user clearly asks to analyze/upload image.
-    if (asksExplanation(q) && !hasExplicitLabAnalysisIntent(q)) return false;
-
-    return hasExplicitLabAnalysisIntent(q);
+    if (!String(text || "").trim()) return false;
+    if (shouldBlockLab(text)) return false;
+    return hasExplicitLabAnalysisIntent(text);
   }
 
   function captureText() {
@@ -73,25 +49,25 @@
   }
 
   function installGuard() {
-    if (window.__scaiaLabGuardInstalled) return;
-    window.__scaiaLabGuardInstalled = true;
+    const currentOpen = window.scaiaOpenLabInterpreter;
 
-    const originalOpen = window.scaiaOpenLabInterpreter;
+    if (typeof currentOpen !== "function") return;
+    if (currentOpen.__guarded) return;
 
-    window.scaiaOpenLabInterpreter = function (type) {
-      const text = lastChatText || (getChatInput() ? getChatInput().value : "");
+    function guardedOpen(type) {
+      const input = getChatInput();
+      const text = lastChatText || (input ? input.value : "");
 
       if (!shouldOpenLab(text)) {
-        console.log("SCAIA Lab Interpreter blocked by routing guard:", text);
+        console.log("Blocked Lab Interpreter:", text);
         return false;
       }
 
-      if (typeof originalOpen === "function") {
-        return originalOpen(type);
-      }
+      return currentOpen(type);
+    }
 
-      return false;
-    };
+    guardedOpen.__guarded = true;
+    window.scaiaOpenLabInterpreter = guardedOpen;
   }
 
   function bindCapture() {
@@ -100,13 +76,8 @@
     if (input && input.dataset.routingGuardCapture !== "1") {
       input.dataset.routingGuardCapture = "1";
 
-      input.addEventListener("keydown", function () {
-        captureText();
-      }, true);
-
-      input.addEventListener("input", function () {
-        captureText();
-      }, true);
+      input.addEventListener("input", captureText, true);
+      input.addEventListener("keydown", captureText, true);
     }
 
     document.querySelectorAll("button").forEach((btn) => {
@@ -114,21 +85,19 @@
 
       if (txt === "ask" && btn.dataset.routingGuardAsk !== "1") {
         btn.dataset.routingGuardAsk = "1";
-        btn.addEventListener("click", function () {
-          captureText();
-        }, true);
+        btn.addEventListener("click", captureText, true);
       }
     });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     bindCapture();
-    setTimeout(installGuard, 500);
+    setTimeout(installGuard, 600);
   });
 
   window.addEventListener("load", function () {
     bindCapture();
-    setTimeout(installGuard, 500);
+    setTimeout(installGuard, 600);
   });
 
   setInterval(function () {
