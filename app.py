@@ -13,7 +13,19 @@ CORS(app)
 # Load trained models
 # =========================
 
-functional_model = joblib.load("functional_phenotype_model.pkl")
+try:
+    try:
+    try:
+    functional_model = joblib.load("functional_phenotype_model.pkl")
+except Exception as e:
+    print("Warning: functional phenotype model could not be loaded:", e)
+    functional_model = None
+except Exception as e:
+    print("Warning: functional phenotype model could not be loaded:", e)
+    functional_model = None
+except Exception as e:
+    print("Warning: functional phenotype model could not be loaded:", e)
+    functional_model = None
 analgesic_model = joblib.load("analgesic_recommendation_model.pkl")
 safety_model = joblib.load("safety_risk_model.pkl")
 
