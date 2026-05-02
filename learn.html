@@ -1,0 +1,655 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SCDAid Learn</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <style>
+    /* SCDAid Learn: full-width table section */
+    .fullWidthTable {
+      grid-column: 1 / -1;
+      width: 100%;
+    }
+
+    .largeCasesTable {
+      overflow-x: auto;
+      padding: 26px;
+    }
+
+    .largeCasesTable table {
+      min-width: 980px;
+      font-size: 14px;
+    }
+
+    .largeCasesTable th,
+    .largeCasesTable td {
+      padding: 16px 18px;
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .largeCasesTable th {
+      font-size: 13px;
+      letter-spacing: .2px;
+    }
+
+    .largeCasesTable tbody tr {
+      transition: 0.2s ease;
+      cursor: pointer;
+    }
+
+    .largeCasesTable tbody tr:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .selectedCaseNotice {
+      margin: 0 28px 20px;
+      padding: 14px 18px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 210, 122, 0.25);
+      background: rgba(217, 154, 68, 0.08);
+      color: rgba(255, 255, 255, 0.78);
+      font-size: 12px;
+      line-height: 1.5;
+      display: none;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">AI</div>
+      <div>
+        <div class="title">SCDAid Learn</div>
+        <div class="subtitle">
+          Human-in-the-loop learning module for functional CYP2D6 phenotype prediction
+        </div>
+      </div>
+    </div>
+
+    <div class="topActions">
+      <button id="themeToggle" class="btn ghost" type="button">Light</button>
+        <a class="btn ghost" href="index.html">Back to SCDAid</a>
+    </div>
+  </div>
+
+  <main class="wrap">
+    <section class="left">
+      <div class="card">
+        <div class="cardHeader">
+          <h2>New Training Case</h2>
+        </div>
+
+        <div id="selectedCaseNotice" class="selectedCaseNotice">
+          Selected case loaded into the form. You can review it, update the actual phenotype, then save as a new case if needed.
+        </div>
+
+        <div class="grid">
+          <div class="field">
+            <label>Age</label>
+            <input id="learn_age" type="number" placeholder="e.g., 24" />
+          </div>
+
+          <div class="field">
+            <label>Sex</label>
+            <select id="learn_sex">
+              <option value="F">F</option>
+              <option value="M">M</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Weight (kg)</label>
+            <input id="learn_weight" type="number" placeholder="e.g., 70" />
+          </div>
+
+          <div class="field">
+            <label>eGFR</label>
+            <input id="learn_egfr" type="number" placeholder="e.g., 90" />
+          </div>
+
+          <div class="field">
+            <label>CYP2D6 inhibitor</label>
+            <select id="learn_inhibitor">
+              <option value="no">No</option>
+              <option value="yes">Yes</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Prior codeine response</label>
+            <select id="learn_codeine">
+              <option value="ineffective">Ineffective</option>
+              <option value="effective">Effective</option>
+              <option value="toxicity">Toxicity</option>
+              <option value="adverse">Adverse effects</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Prior tramadol response</label>
+            <select id="learn_tramadol">
+              <option value="ineffective">Ineffective</option>
+              <option value="effective">Effective</option>
+              <option value="toxicity">Toxicity</option>
+              <option value="adverse">Adverse effects</option>
+              <option value="unknown">Unknown</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>OPRM1 genotype</label>
+            <select id="learn_oprm1">
+              <option value="">None</option>
+              <option value="AA">AA</option>
+              <option value="AG">AG</option>
+              <option value="GG">GG</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>COMT genotype</label>
+            <select id="learn_comt">
+              <option value="">None</option>
+              <option value="Val/Val">Val/Val</option>
+              <option value="Val/Met">Val/Met</option>
+              <option value="Met/Met">Met/Met</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>AI predicted phenotype</label>
+            <select id="learn_predicted">
+              <option value="PM">PM</option>
+              <option value="IM">IM</option>
+              <option value="NM">NM</option>
+              <option value="UM">UM</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Actual phenotype if confirmed</label>
+            <select id="learn_actual">
+              <option value="">Not confirmed yet</option>
+              <option value="PM">PM</option>
+              <option value="IM">IM</option>
+              <option value="NM">NM</option>
+              <option value="UM">UM</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Review status</label>
+            <select id="learn_reviewed">
+              <option value="no">Not reviewed</option>
+              <option value="yes">Approved for training</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn primary" type="button" onclick="saveCase()">Save Case</button>
+          <button class="btn" type="button" onclick="trainModel()">Train Model</button>
+          <button class="btn ghost" type="button" onclick="clearCases()">Clear Cases</button>
+        </div>
+
+        <div class="disclaimer">
+          Educational prototype only. Use simulated or de-identified cases only. This module does not change clinical recommendations automatically.
+        </div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="card">
+        <div class="cardHeader">
+          <h2>Training Dataset</h2>
+        </div>
+
+        <div id="learn_stats" class="box">
+          No cases added yet.
+        </div>
+
+        <div id="errorAnalysis" class="box">
+          Error analysis will appear after training.
+        </div>
+      </div>
+    </section>
+
+    <section class="fullWidthTable">
+      <div class="card">
+        <div class="cardHeader">
+          <h2>Saved Training Cases</h2>
+        </div>
+
+        <div id="casesTable" class="box largeCasesTable">
+          Cases will appear here.
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE = "https://scdaid-api.onrender.com";
+
+    let cases = JSON.parse(localStorage.getItem("scdaid_learn_cases") || "[]");
+
+    function getValue(id) {
+      return document.getElementById(id)?.value || "";
+    }
+
+    function setValue(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = value || "";
+    }
+
+    function normalizeResponseForApi(value) {
+      if (!value) return "unknown";
+
+      const v = String(value).toLowerCase().trim();
+
+      if (v === "adverse" || v === "adverse effects" || v === "toxicity") {
+        return "toxicity";
+      }
+
+      if (["effective", "ineffective", "unknown"].includes(v)) {
+        return v;
+      }
+
+      return "unknown";
+    }
+
+    function normalizePhenotype(value) {
+      if (value === "EM") return "NM";
+      return value || "";
+    }
+
+    function saveCase() {
+      const newCase = {
+        age: getValue("learn_age"),
+        sex: getValue("learn_sex"),
+        weight: getValue("learn_weight"),
+        egfr: getValue("learn_egfr"),
+        inhibitor: getValue("learn_inhibitor"),
+        codeine: getValue("learn_codeine"),
+        tramadol: getValue("learn_tramadol"),
+        oprm1: getValue("learn_oprm1"),
+        comt: getValue("learn_comt"),
+        predicted: normalizePhenotype(getValue("learn_predicted")),
+        actual: normalizePhenotype(getValue("learn_actual")),
+        reviewed: getValue("learn_reviewed")
+      };
+
+      cases.push(newCase);
+      localStorage.setItem("scdaid_learn_cases", JSON.stringify(cases));
+      renderCases();
+
+      const notice = document.getElementById("selectedCaseNotice");
+      if (notice) {
+        notice.style.display = "block";
+        notice.innerHTML = "Case saved successfully. It has been added to the training dataset.";
+      }
+    }
+
+    function clearCases() {
+      const confirmClear = confirm("Are you sure you want to clear all saved cases?");
+      if (!confirmClear) return;
+
+      cases = [];
+      localStorage.removeItem("scdaid_learn_cases");
+      renderCases();
+
+      document.getElementById("errorAnalysis").innerHTML = "Error analysis will appear after training.";
+
+      const notice = document.getElementById("selectedCaseNotice");
+      if (notice) {
+        notice.style.display = "none";
+      }
+    }
+
+    function loadCaseIntoForm(index) {
+      const c = cases[index];
+      if (!c) return;
+
+      setValue("learn_age", c.age);
+      setValue("learn_sex", c.sex || "F");
+      setValue("learn_weight", c.weight);
+      setValue("learn_egfr", c.egfr);
+
+      setValue("learn_inhibitor", c.inhibitor || "no");
+      setValue("learn_codeine", c.codeine || "ineffective");
+      setValue("learn_tramadol", c.tramadol || "ineffective");
+
+      setValue("learn_oprm1", c.oprm1 || "");
+      setValue("learn_comt", c.comt || "");
+
+      setValue("learn_predicted", normalizePhenotype(c.predicted) || "PM");
+      setValue("learn_actual", normalizePhenotype(c.actual) || "");
+      setValue("learn_reviewed", c.reviewed || "no");
+
+      const notice = document.getElementById("selectedCaseNotice");
+      if (notice) {
+        notice.style.display = "block";
+        notice.innerHTML = `
+          Selected case loaded into the form.
+          You can review it, update the actual phenotype, then click <b>Save Case</b> if you want to save it as a new reviewed record.
+        `;
+      }
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth"
+      });
+    }
+
+    function explainMismatch(c) {
+      const reasons = [];
+
+      if (c.predicted === "IM" && c.actual === "NM") {
+        reasons.push("The model may be overestimating reduced CYP2D6 activity.");
+      }
+
+      if (c.predicted === "PM" && c.actual !== "PM") {
+        reasons.push("The model may be over-weighting ineffective codeine/tramadol response.");
+      }
+
+      if (c.predicted === "UM" && c.actual !== "UM") {
+        reasons.push("The model may be over-weighting adverse effects as evidence for ultrarapid metabolism.");
+      }
+
+      if (c.inhibitor === "yes") {
+        reasons.push("CYP2D6 inhibitor may cause phenoconversion and confuse genetic vs functional phenotype.");
+      }
+
+      if (c.codeine === "unknown" || c.tramadol === "unknown") {
+        reasons.push("Missing prior opioid response reduces prediction reliability.");
+      }
+
+      if (!c.oprm1 || !c.comt) {
+        reasons.push("Optional modifiers are incomplete; interpretation may be less informative.");
+      }
+
+      if (!reasons.length) {
+        reasons.push("Mismatch detected; more labeled cases are needed to understand this error pattern.");
+      }
+
+      return reasons;
+    }
+
+    async function trainModel() {
+      const reviewed = cases.filter(c => c.reviewed === "yes");
+      const confirmed = reviewed.filter(c => c.actual);
+
+      if (confirmed.length < 8) {
+        alert("Need at least 8 approved cases with actual phenotype before API training.");
+        return;
+      }
+
+      const apiCases = confirmed.map(c => ({
+        age: Number(c.age),
+        weight: Number(c.weight),
+        egfr: Number(c.egfr),
+        sex: c.sex || "F",
+        cyp2d6_inhibitor: c.inhibitor || "no",
+        prior_codeine_response: normalizeResponseForApi(c.codeine),
+        prior_tramadol_response: normalizeResponseForApi(c.tramadol),
+        predicted: normalizePhenotype(c.predicted) || null,
+        actual: normalizePhenotype(c.actual),
+        reviewed: c.reviewed || "no"
+      }));
+
+      const invalidCase = apiCases.find(c =>
+        !Number.isFinite(c.age) ||
+        !Number.isFinite(c.weight) ||
+        !Number.isFinite(c.egfr) ||
+        !c.actual
+      );
+
+      if (invalidCase) {
+        alert("Some approved cases have missing age, weight, eGFR, or actual phenotype. Please fix them before training.");
+        return;
+      }
+
+      document.getElementById("learn_stats").innerHTML = `
+        <b>Training model...</b><br>
+        Sending ${apiCases.length} reviewed cases to the SCDAid API.
+      `;
+
+      try {
+        const res = await fetch(`${API_BASE}/train_model`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ cases: apiCases })
+        });
+
+        const out = await res.json();
+
+        if (!res.ok || out.status !== "trained") {
+          document.getElementById("learn_stats").innerHTML = `
+            <b>Training not completed</b><br>
+            ${out.message || "Unknown API error"}<br>
+            <b>Approved cases:</b> ${out.approved_cases || apiCases.length}
+          `;
+          return;
+        }
+
+        const metrics = out.metrics || {};
+        const distribution = out.phenotype_distribution || {};
+
+        document.getElementById("learn_stats").innerHTML = `
+          <b>API Training Summary</b><br>
+          <b>Status:</b> ${out.status}<br>
+          <b>Cases used:</b> ${out.approved_cases_used}<br>
+          <b>Training mode:</b> ${metrics.mode || "-"}<br>
+          <b>Accuracy:</b> ${metrics.accuracy !== undefined ? Math.round(metrics.accuracy * 100) + "%" : "-"}<br><br>
+
+          <b>Phenotype distribution:</b><br>
+          PM: ${distribution.PM || 0} · IM: ${distribution.IM || 0} · NM: ${distribution.NM || 0} · UM: ${distribution.UM || 0}<br><br>
+
+          <span class="hint">
+            The API has retrained and saved a new phenotype_model.joblib. Future phenotype predictions will use the updated model.
+          </span>
+        `;
+
+        renderApiTrainingAnalysis(out);
+      } catch (err) {
+        document.getElementById("learn_stats").innerHTML = `
+          <b>API connection failed</b><br>
+          Could not reach the training endpoint. Make sure the API is running and deployed.
+        `;
+      }
+    }
+
+    function renderApiTrainingAnalysis(out) {
+      const metrics = out.metrics || {};
+      const labels = metrics.labels || [];
+      const cm = metrics.confusion_matrix || [];
+
+      if (!labels.length || !cm.length) {
+        document.getElementById("errorAnalysis").innerHTML = `
+          <b>API Training Analysis</b><br>
+          Model trained, but confusion matrix was not available.
+        `;
+        return;
+      }
+
+      const matrixRows = cm.map((row, i) => `
+        <tr>
+          <td><b>Actual ${labels[i]}</b></td>
+          ${row.map(v => `<td>${v}</td>`).join("")}
+        </tr>
+      `).join("");
+
+      document.getElementById("errorAnalysis").innerHTML = `
+        <b>API Training Analysis</b><br>
+        <b>Confusion Matrix</b><br><br>
+
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th></th>
+                ${labels.map(l => `<th>Pred ${l}</th>`).join("")}
+              </tr>
+            </thead>
+            <tbody>
+              ${matrixRows}
+            </tbody>
+          </table>
+        </div>
+
+        <br>
+        <span class="hint">
+          This matrix shows where the model confuses phenotypes after API retraining.
+          This is for prototype validation only, not clinical deployment.
+        </span>
+      `;
+    }
+
+    function renderLocalErrorAnalysis(wrongCases) {
+      if (!wrongCases.length) {
+        document.getElementById("errorAnalysis").innerHTML = `
+          <b>Error Analysis</b><br>
+          No mismatches detected in confirmed reviewed cases.<br><br>
+          <span class="hint">
+            This does not prove model safety. More diverse cases are required before clinical use.
+          </span>
+        `;
+        return;
+      }
+
+      document.getElementById("errorAnalysis").innerHTML = `
+        <b>Error Analysis</b><br>
+        <b>Mismatched cases:</b> ${wrongCases.length}<br><br>
+
+        ${wrongCases.map((c, index) => {
+          const reasons = explainMismatch(c);
+
+          return `
+            <div style="margin-bottom:14px; padding:12px; border:1px solid rgba(255,255,255,0.18); border-radius:14px;">
+              <b>Mismatch ${index + 1}</b><br>
+              Predicted: <b>${c.predicted}</b> · Actual: <b>${c.actual}</b><br>
+              Codeine response: ${c.codeine} · Tramadol response: ${c.tramadol} · CYP2D6 inhibitor: ${c.inhibitor}<br>
+              OPRM1: ${c.oprm1 || "-"} · COMT: ${c.comt || "-"}<br><br>
+              <b>Possible explanation:</b>
+              <ul>
+                ${reasons.map(r => `<li>${r}</li>`).join("")}
+              </ul>
+            </div>
+          `;
+        }).join("")}
+
+        <span class="hint">
+          Error analysis is exploratory. It helps identify weak points in the prediction logic, but it is not a clinical conclusion.
+        </span>
+      `;
+    }
+
+    function renderCases() {
+      const reviewed = cases.filter(c => c.reviewed === "yes");
+      const confirmed = reviewed.filter(c => c.actual);
+      const correct = confirmed.filter(c => c.predicted === c.actual);
+      const wrong = confirmed.filter(c => c.predicted !== c.actual);
+
+      const accuracy = confirmed.length
+        ? Math.round((correct.length / confirmed.length) * 100)
+        : null;
+
+      document.getElementById("learn_stats").innerHTML = `
+        <b>Total cases:</b> ${cases.length}<br>
+        <b>Approved for training:</b> ${reviewed.length}<br>
+        <b>Confirmed cases:</b> ${confirmed.length}<br>
+        <b>Current local accuracy:</b> ${accuracy === null ? "Not enough data" : accuracy + "%"}<br><br>
+        <span class="hint">
+          Local accuracy compares saved predicted vs actual phenotype. API training requires at least 8 approved confirmed cases.
+        </span>
+      `;
+
+      renderLocalErrorAnalysis(wrong);
+
+      if (!cases.length) {
+        document.getElementById("casesTable").innerHTML = "Cases will appear here.";
+        return;
+      }
+
+      document.getElementById("casesTable").innerHTML = `
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Age</th>
+                <th>Sex</th>
+                <th>Weight</th>
+                <th>eGFR</th>
+                <th>CYP2D6 inhibitor</th>
+                <th>Codeine</th>
+                <th>Tramadol</th>
+                <th>OPRM1</th>
+                <th>COMT</th>
+                <th>Predicted</th>
+                <th>Actual</th>
+                <th>Reviewed</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${cases.map((c, index) => `
+                <tr onclick="loadCaseIntoForm(${index})" title="Click to load this case into the form">
+                  <td>${c.age || "-"}</td>
+                  <td>${c.sex || "-"}</td>
+                  <td>${c.weight || "-"}</td>
+                  <td>${c.egfr || "-"}</td>
+                  <td>${c.inhibitor || "-"}</td>
+                  <td>${c.codeine || "-"}</td>
+                  <td>${c.tramadol || "-"}</td>
+                  <td>${c.oprm1 || "-"}</td>
+                  <td>${c.comt || "-"}</td>
+                  <td>${normalizePhenotype(c.predicted) || "-"}</td>
+                  <td>${normalizePhenotype(c.actual) || "-"}</td>
+                  <td>${c.reviewed || "-"}</td>
+                </tr>
+              `).join("")}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    renderCases();
+  </script>
+
+<script>
+  // Light / Dark mode toggle for SCDAid Learn
+  (function () {
+    const themeBtn = document.getElementById("themeToggle");
+    const savedTheme = localStorage.getItem("scdaid-theme") || "dark";
+
+    function applyTheme(theme) {
+      if (theme === "light") {
+        document.body.classList.add("lightTheme");
+        if (themeBtn) themeBtn.textContent = "Dark";
+      } else {
+        document.body.classList.remove("lightTheme");
+        if (themeBtn) themeBtn.textContent = "Light";
+      }
+      localStorage.setItem("scdaid-theme", theme);
+    }
+
+    applyTheme(savedTheme);
+
+    if (themeBtn) {
+      themeBtn.addEventListener("click", function () {
+        const isLight = document.body.classList.contains("lightTheme");
+        applyTheme(isLight ? "dark" : "light");
+      });
+    }
+  })();
+</script>
+
+</body>
+</html>
