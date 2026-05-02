@@ -1,0 +1,1 @@
+\n- Auto-approved learned rule from feedback: If the user says "تكلم عربي" or asks in Arabic, SCAIA must reply in Arabic.\n

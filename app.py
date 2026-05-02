@@ -9,6 +9,45 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
 
 
+def text_contains_arabic(text):
+    return any("\u0600" <= ch <= "\u06FF" for ch in str(text or ""))
+
+def get_scaia_language_instruction(question):
+    q = str(question or "").lower()
+
+    arabic_triggers = [
+        "تكلم عربي",
+        "رد عربي",
+        "بالعربي",
+        "اشرح عربي",
+        "اكتب عربي",
+        "عربي"
+    ]
+
+    if text_contains_arabic(question) or any(t in q for t in arabic_triggers):
+        return (
+            "LANGUAGE REQUIREMENT: The user is writing in Arabic or requested Arabic. "
+            "Reply in Arabic only. Keep English scientific terms when needed, such as CYP2D6, phenotype, eGFR, SpO2, ACS. "
+            "Do not reply in English unless the user explicitly asks for English."
+        )
+
+    return (
+        "LANGUAGE REQUIREMENT: Reply in the same language as the user's question."
+    )
+
+
+
+
+
+def load_text_file_safe(path):
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except Exception:
+        return ""
+
+
+
 # =========================
 # Load trained models
 # =========================
@@ -537,42 +576,131 @@ Core rules:
 """
 
 
-def local_scdaid_answer(question, context):
-    q = str(question).lower()
 
-    if "tramadol" in q or "codeine" in q:
+def local_arabic_dialect_intent_answer(question):
+    """
+    Handles short Saudi/Arabic casual messages before generic fallback.
+    Returns a string answer or None.
+    """
+    q = str(question or "").strip()
+    q_norm = q.replace("؟", "").replace("!", "").replace(".", "").strip()
+    q_lower = q_norm.lower()
+
+    # Identity/name follow-ups
+    if any(x in q_lower for x in ["ليه اسمك", "ليش اسمك", "معنى اسمك", "وش يعني سكايا", "وش معنى scaia", "ليش scaia"]):
         return (
-            "SCDAid flags codeine and tramadol because they are CYP2D6-dependent. "
-            "In CYP2D6 poor metabolizers, they may provide inadequate analgesia. "
-            "In ultrarapid metabolizers, toxicity risk may increase. Strong CYP2D6 inhibitors can also reduce functional CYP2D6 activity through phenoconversion. "
-            "SCDAid is an educational prototype and not a substitute for clinical judgment."
+            "اسم SCAIA جاي من فكرة إنها مساعد ذكي مرتبط بـ SCDAid. "
+            "يعني هو جزء الشرح والمحادثة داخل المشروع، يساعد المستخدم يفهم التوصيات والتحاليل بدل ما تكون الأداة مجرد أرقام ونتائج."
         )
 
-    if "hydromorphone" in q:
+    if q_lower in ["اسمك", "وش اسمك", "ايش اسمك", "من انت", "مين انت", "انت مين"]:
         return (
-            "Hydromorphone may be preferred in SCDAid prototype logic when renal risk is moderate, when morphine is less preferred, "
-            "or when safety factors make morphine less suitable. It is mainly chosen due to renal/safety considerations, not because of CYP2D6 directly. "
-            "SCDAid is an educational prototype and not a substitute for clinical judgment."
+            "اسمي SCAIA، وأنا المساعد الذكي داخل SCDAid. "
+            "أشرح لك منطق التوصيات، CYP2D6، اختيار المسكن، عوامل السلامة، والتحاليل الجينية بطريقة مبسطة."
         )
 
-    if "fentanyl" in q:
+    # Rejection / dissatisfaction
+    if q_lower in ["لا", "لا ابي", "ما ابي", "مو كذا", "لا مو كذا", "غلط", "مو هذا", "لا غلط"]:
         return (
-            "Fentanyl may be preferred in SCDAid prototype logic when eGFR is below 30 because that represents high renal risk. "
-            "It has less concern for active renal metabolite accumulation compared with morphine. "
-            "SCDAid is an educational prototype and not a substitute for clinical judgment."
+            "تمام، فهمت إن الرد مو اللي تبغينه. "
+            "قولي لي تبغينه أقصر؟ أبسط؟ أشرح نقطة معيّنة؟ أو أعدّل طريقة جواب SCAIA؟"
         )
 
-    if "egfr" in q or "renal" in q or "kidney" in q:
+    # Simple acknowledgment / casual continuation
+    if q_lower in ["تمام", "اوكي", "أوكي", "طيب", "ايه", "اي", "صح", "حلو", "كويس", "تمام خلاص"]:
         return (
-            "In SCDAid prototype logic, eGFR below 30 is high renal risk, eGFR 30–59 is moderate renal risk, "
-            "and eGFR 60 or above is low renal risk. Do not confuse low renal risk with low eGFR."
+            "تمام، أنا معك. كمّلي وش تبغين نعدّل أو نختبر؟"
         )
 
-    return (
-        "SCAIA can explain CYP2D6 phenotype, opioid choice, renal safety, inhibitors, inflammation, toxicity, "
-        "and why codeine/tramadol may be avoided. SCDAid is educational and not a substitute for clinical judgment."
+    # Why / clarify
+    if q_lower in ["ليه", "ليش", "كيف يعني", "وش تقصد", "ما فهمت", "مو فاهمة", "وضح", "اشرح اكثر"]:
+        return (
+            "أكيد، أوضح لك. أي جزء تقصدين بالضبط؟ الاسم؟ اللوجيك؟ التحاليل؟ أو طريقة رد SCAIA؟"
+        )
+
+    # Ask to be more human/friendly
+    if any(x in q_lower for x in ["تكلم طبيعي", "خلك طبيعي", "تكلم كانك انسان", "لا تكون رسمي", "فرندلي", "اسلوبك"]):
+        return (
+            "تمام، بخلي أسلوبي أبسط وأقرب للمحادثة الطبيعية. "
+            "بس مع المعلومات الطبية بحافظ على الدقة وما أعطي كلام نهائي بدون تنبيه."
+        )
+
+    # Lab routing explanation
+    if any(x in q_lower for x in ["متى تفتح اللاب", "متى اروح للاب", "متى يفتح lab", "متى يفتح اللاب"]):
+        return (
+            "أفتح Lab Interpreter فقط إذا طلبتي تحليل صورة أو نتيجة، مثل: "
+            "«أبي أحلل gel image» أو «عندي Sanger chromatogram». "
+            "أما إذا سألتي عن الشرح أو اللوجيك أو الفكرة، أجاوبك هنا داخل الشات."
+        )
+
+    return None
+
+
+def local_scdaid_answer(question, context=None):
+    """
+    Smarter local fallback when OpenAI is unavailable.
+    Uses triple-quoted strings to avoid syntax errors.
+    """
+    q = str(question or "").strip()
+    q_lower = q.lower()
+
+    wants_arabic = (
+        text_contains_arabic(q)
+        or "تكلم عربي" in q_lower
+        or "رد عربي" in q_lower
+        or "بالعربي" in q_lower
+        or "عربي" in q_lower
     )
 
+    if wants_arabic:
+        dialect_answer = local_arabic_dialect_intent_answer(q)
+        if dialect_answer:
+            return dialect_answer
+
+    clinical_terms = [
+        "voc", "sickle", "scd", "cyp2d6", "egfr", "spo2", "fluoxetine",
+        "paroxetine", "renal", "respiratory", "acs", "opioid", "morphine",
+        "hydromorphone", "fentanyl", "tramadol", "codeine",
+        "أنيميا", "منجل", "منجلية", "أزمة", "ألم", "جين", "مسكن",
+        "مورفين", "هيدرومورفون", "فنتانيل", "ترامادول", "كودايين",
+        "كلية", "تنفس", "اكسجين", "أكسجين"
+    ]
+
+    is_case = any(term in q_lower for term in clinical_terms)
+
+    if wants_arabic and is_case:
+        return """هذا سؤال clinical reasoning، لذلك SCAIA المفروض يجاوب داخل الشات ولا يفتح Lab Interpreter؛ لأنه ما فيه طلب رفع صورة أو تحليل مختبري.
+
+التحليل المنطقي حسب SCDAid:
+
+1. CYP2D6 genotype غير معروف، ومع وجود fluoxetine فهذا مهم لأنه يعتبر strong CYP2D6 inhibitor. هذا قد يسبب phenoconversion، يعني حتى لو كان الجين طبيعي ممكن وظيفة CYP2D6 تنخفض. لذلك codeine و tramadol ما يكونون خيارات مناسبة أو مفضلة لأنهم يعتمدون على CYP2D6.
+
+2. eGFR = 42 يعني renal risk متوسط. هنا لازم الحذر مع الأدوية اللي تتأثر بالكلى. morphine قد يحتاج حذر بسبب احتمال تراكم metabolites مع ضعف الكلى، لذلك hydromorphone قد يكون خيارًا أنسب من ناحية renal safety حسب منطق النموذج والبروتوكول المحلي.
+
+3. SpO2 = 93% يعتبر منخفض، وهذا يرفع القلق من respiratory risk أو احتمال ACS خصوصًا في مريض SCD مع VOC. SCAIA لازم يذكر monitoring قوي: تقييم ACS، متابعة SpO2، التنفس، sedation score، والتصعيد السريري إذا الحالة غير مستقرة.
+
+4. إذا الألم severe VOC، يحتاج تسكين فعال وسريع، لكن مع safety guardrails. القرار لا يعتمد فقط على شدة الألم، بل على الكلى، التنفس، الأدوية المصاحبة، وCYP2D6.
+
+الخلاصة: SCAIA يجب أن يشرح أن fluoxetine يجعل codeine/tramadol غير مناسبين، eGFR 42 يدعم الحذر الكلوي وقد يميل إلى hydromorphone بدل morphine، وSpO2 93% يتطلب تقييم respiratory/ACS ومراقبة لصيقة. هذا تفسير تعليمي وليس أمرًا علاجيًا نهائيًا."""
+
+    if (not wants_arabic) and is_case:
+        return """This is a clinical reasoning question, so SCAIA should answer in chat and should not open the Lab Interpreter unless the user asks to upload or analyze a lab image.
+
+Reasoning:
+1. CYP2D6 genotype is unknown, and fluoxetine is a strong CYP2D6 inhibitor. This may cause phenoconversion, so codeine and tramadol should not be preferred because they depend on CYP2D6 activation.
+2. eGFR 42 indicates moderate renal risk. Morphine may require caution because of metabolite accumulation concerns, so hydromorphone may be considered more suitable depending on protocol and patient context.
+3. SpO2 93% raises respiratory safety concern and should prompt assessment for hypoxia or acute chest syndrome, with close monitoring.
+4. Severe VOC pain needs effective analgesia, but SCDAid safety guardrails should consider renal function, respiratory status, CYP2D6 inhibition, and toxicity history.
+
+Educational interpretation only, not a substitute for clinical judgment."""
+
+    if wants_arabic:
+        if "وظيفة" in q or "وش" in q or "ايش" in q or "ما وظيفة" in q:
+            return """وظيفة SCAIA إنه يكون مساعد تعليمي داخل SCDAid. يشرح منطق التوصيات، CYP2D6، اختيار المسكن، عوامل السلامة، ومتى نفتح Lab Interpreter للتحليل."""
+
+        return """تمام، فهمت عليك. اسأليني بشكل مباشر عن الجزء اللي تبينه، وبجاوبك بالعربي: منطق SCDAid، CYP2D6، اختيار المسكن، السلامة، أو تحاليل SCAIA Lab Interpreter."""
+
+    return """SCAIA can explain SCDAid recommendations, CYP2D6 logic, opioid selection, renal and respiratory safety, and PGx lab interpretation. Please ask a specific question so I can help clearly."""
 
 
 def fetch_cpic_live_context():
@@ -632,11 +760,18 @@ def chat():
         question = data.get("question") or data.get("message") or ""
         context = data.get("context", {})
         chat_history = data.get("chat_history", [])
+        language_instruction = get_scaia_language_instruction(question)
 
         if not question:
             return jsonify({
                 "answer": "Please enter a question for SCAIA.",
                 "mode": "empty"
+            })
+
+        if any(x in str(question).lower() for x in ["تكلم عربي", "رد عربي", "بالعربي", "اشرح عربي"]):
+            return jsonify({
+                "answer": "أكيد، من الآن برد عليك بالعربي. اسألني عن SCDAid أو SCAIA أو التحاليل، وبشرح لك بشكل واضح.",
+                "mode": "arabic_direct"
             })
 
         api_key = os.getenv("OPENAI_API_KEY")
@@ -658,8 +793,17 @@ def chat():
             else:
                 cpic_live_context = "CPIC live context was not fetched because the user did not ask for current CPIC updates. Use the local SCDAid knowledge base."
 
+            learned_rules = load_text_file_safe("scaia_learned_rules.txt")
             system_prompt = f"""
 You are SCAIA, a conversational clinical pharmacy explanation assistant inside the SCDAid prototype.
+
+{language_instruction}
+
+CRITICAL LANGUAGE RULE:
+If the user's message contains Arabic letters, reply in Arabic.
+If the user asks "تكلم عربي", "رد عربي", "بالعربي", or similar, reply in Arabic only.
+Do not answer Arabic messages in English.
+Keep scientific terms in English only when needed, such as CYP2D6, phenotype, eGFR, SpO2, ACS.
 
 Your goal:
 You should be able to take and give in conversation. Do not only give one rigid answer.
@@ -694,7 +838,7 @@ Strict safety and wording:
 - Always mention that SCDAid is an educational prototype and not a substitute for clinical judgment when giving clinical interpretation.
 
 SCDAid knowledge base:
-{scdaid_knowledge}
+{scdaid_knowledge}\n\nSCAIA learned rules from reviewed feedback:\n{learned_rules}
 
 Current CPIC live context:
 {cpic_live_context}
@@ -710,6 +854,10 @@ Current SCDAid context:
 {context}
 
 Answer as SCAIA.
+
+{language_instruction}
+
+If the user wrote in Arabic or requested Arabic, your entire answer must be in Arabic, except necessary scientific terms.
 Keep the answer clinically clear, accurate, conversational, and not too long.
 """
 
@@ -739,6 +887,591 @@ Keep the answer clinically clear, accurate, conversational, and not too long.
         return jsonify({
             "error": str(e)
         }), 500
+
+
+
+# =========================
+# SCAIA DNA Gel Image Assist
+# Educational image analysis only
+# =========================
+
+@app.route("/analyze-gel", methods=["POST"])
+def analyze_gel():
+    try:
+        import cv2
+        import numpy as np
+        import base64
+
+        if "image" not in request.files:
+            return jsonify({"error": "No image uploaded."}), 400
+
+        file = request.files["image"]
+
+        ladder_lane = int(request.form.get("ladder_lane", "1"))
+        ladder_sizes_raw = request.form.get("ladder_sizes", "1500,1000,700,500,300,200,100")
+        target_size_raw = request.form.get("target_size", "").strip()
+
+        ladder_sizes = []
+        for x in ladder_sizes_raw.replace(" ", "").split(","):
+            if x:
+                ladder_sizes.append(float(x))
+
+        if len(ladder_sizes) < 3:
+            return jsonify({"error": "Please provide at least 3 ladder sizes, e.g. 1500,1000,700,500,300,200,100"}), 400
+
+        img_bytes = np.frombuffer(file.read(), np.uint8)
+        img = cv2.imdecode(img_bytes, cv2.IMREAD_COLOR)
+
+        if img is None:
+            return jsonify({"error": "Could not read the uploaded image."}), 400
+
+        original = img.copy()
+        h, w = img.shape[:2]
+
+        # Resize very large images for stable processing
+        max_w = 1100
+        if w > max_w:
+            scale = max_w / w
+            img = cv2.resize(img, (int(w * scale), int(h * scale)))
+            original = cv2.resize(original, (int(w * scale), int(h * scale)))
+            h, w = img.shape[:2]
+
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+
+        # Normalize and invert if needed so bands become bright signal
+        gray = cv2.GaussianBlur(gray, (5, 5), 0)
+        norm = cv2.normalize(gray, None, 0, 255, cv2.NORM_MINMAX)
+
+        # If background is bright and bands dark, invert
+        if np.mean(norm) > 120:
+            signal = 255 - norm
+        else:
+            signal = norm
+
+        # Enhance contrast
+        signal = cv2.normalize(signal, None, 0, 255, cv2.NORM_MINMAX)
+
+        # Detect lane centers from vertical intensity profile
+        vertical_profile = np.mean(signal, axis=0)
+        vertical_profile = cv2.GaussianBlur(vertical_profile.reshape(1, -1), (1, 31), 0).flatten()
+
+        threshold = np.percentile(vertical_profile, 75)
+        peaks = []
+        min_dist = max(20, w // 30)
+
+        for i in range(1, len(vertical_profile) - 1):
+            if vertical_profile[i] > threshold and vertical_profile[i] >= vertical_profile[i - 1] and vertical_profile[i] >= vertical_profile[i + 1]:
+                if not peaks or abs(i - peaks[-1]) > min_dist:
+                    peaks.append(i)
+                elif vertical_profile[i] > vertical_profile[peaks[-1]]:
+                    peaks[-1] = i
+
+        # Fallback if lanes are not detected well
+        if len(peaks) < 2:
+            n_guess = 6
+            peaks = [int((i + 0.5) * w / n_guess) for i in range(n_guess)]
+
+        lane_centers = sorted(peaks)
+        lane_count = len(lane_centers)
+
+        if ladder_lane < 1 or ladder_lane > lane_count:
+            return jsonify({
+                "error": f"Ladder lane number is out of range. Detected approximately {lane_count} lanes."
+            }), 400
+
+        lane_half_width = max(8, min(22, w // 80))
+
+        def lane_band_positions(center_x):
+            x1 = max(0, center_x - lane_half_width)
+            x2 = min(w, center_x + lane_half_width)
+            lane_img = signal[:, x1:x2]
+            profile = np.mean(lane_img, axis=1)
+            profile = cv2.GaussianBlur(profile.reshape(-1, 1), (1, 9), 0).flatten()
+
+            band_threshold = np.percentile(profile, 85)
+            min_band_dist = max(10, h // 45)
+
+            ys = []
+            for y in range(1, len(profile) - 1):
+                if profile[y] > band_threshold and profile[y] >= profile[y - 1] and profile[y] >= profile[y + 1]:
+                    if not ys or abs(y - ys[-1]) > min_band_dist:
+                        ys.append(y)
+                    elif profile[y] > profile[ys[-1]]:
+                        ys[-1] = y
+
+            # Remove very weak bands using relative intensity
+            if ys:
+                max_val = max(profile[y] for y in ys)
+                ys = [y for y in ys if profile[y] >= max_val * 0.35]
+
+            return sorted(ys), profile
+
+        ladder_center = lane_centers[ladder_lane - 1]
+        ladder_ys, ladder_profile = lane_band_positions(ladder_center)
+
+        if len(ladder_ys) < 3:
+            return jsonify({
+                "error": "Could not detect enough ladder bands. Try a clearer gel image or adjust ladder lane."
+            }), 400
+
+        # Match ladder bands to provided sizes.
+        # Larger bp bands stay higher; smaller bp bands migrate lower.
+        n = min(len(ladder_ys), len(ladder_sizes))
+        ladder_ys_used = np.array(ladder_ys[:n], dtype=float)
+        ladder_sizes_used = np.array(ladder_sizes[:n], dtype=float)
+
+        # Fit log10(bp) = a*y + b
+        coeff = np.polyfit(ladder_ys_used, np.log10(ladder_sizes_used), 1)
+
+        def estimate_bp(y):
+            log_bp = coeff[0] * y + coeff[1]
+            return float(10 ** log_bp)
+
+        results = []
+        annotated = original.copy()
+
+        # Draw lanes
+        for idx, cx in enumerate(lane_centers, start=1):
+            color = (0, 215, 255) if idx == ladder_lane else (255, 180, 60)
+            cv2.line(annotated, (cx, 0), (cx, h), color, 1)
+            cv2.putText(annotated, f"L{idx}", (max(3, cx - 15), 22), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2)
+
+        # Draw ladder bands
+        for y, size in zip(ladder_ys_used, ladder_sizes_used):
+            cv2.circle(annotated, (ladder_center, int(y)), 6, (0, 255, 255), -1)
+            cv2.putText(annotated, f"{int(size)}bp", (min(w - 90, ladder_center + 12), int(y) + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 255, 255), 1)
+
+        # Analyze sample lanes
+        for idx, cx in enumerate(lane_centers, start=1):
+            ys, _ = lane_band_positions(cx)
+
+            lane_bands = []
+            for y in ys:
+                bp = estimate_bp(y)
+                lane_bands.append({
+                    "y_px": int(y),
+                    "estimated_bp": round(bp, 1)
+                })
+
+                if idx != ladder_lane:
+                    cv2.circle(annotated, (cx, int(y)), 5, (0, 80, 255), -1)
+                    cv2.putText(annotated, f"{int(round(bp))}bp", (min(w - 85, cx + 10), int(y) + 4), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (0, 80, 255), 1)
+
+            results.append({
+                "lane": idx,
+                "type": "ladder" if idx == ladder_lane else "sample",
+                "bands": lane_bands
+            })
+
+        target_comment = ""
+        if target_size_raw:
+            try:
+                target_size = float(target_size_raw)
+                tolerance = max(30, target_size * 0.12)
+                matching = []
+                for lane in results:
+                    if lane["type"] == "sample":
+                        for band in lane["bands"]:
+                            if abs(band["estimated_bp"] - target_size) <= tolerance:
+                                matching.append((lane["lane"], band["estimated_bp"]))
+
+                if matching:
+                    target_comment = "Possible target-size bands detected near the expected size in: " + ", ".join(
+                        [f"Lane {lane} (~{round(bp)} bp)" for lane, bp in matching]
+                    )
+                else:
+                    target_comment = "No clear sample band was detected near the expected target size using the current tolerance."
+            except Exception:
+                target_comment = "Target size was provided but could not be interpreted as a number."
+
+        # Encode annotated image
+        ok, buffer = cv2.imencode(".png", annotated)
+        annotated_b64 = ""
+        if ok:
+            annotated_b64 = base64.b64encode(buffer).decode("utf-8")
+
+        explanation_lines = []
+        explanation_lines.append("SCAIA DNA Gel Image Assist detected approximate lanes and bands from the uploaded gel image.")
+        explanation_lines.append(f"Detected lanes: {lane_count}. Ladder lane used: Lane {ladder_lane}.")
+        explanation_lines.append("Band sizes were estimated by calibrating migration distance against the DNA ladder using a log10(bp) relationship.")
+        if target_comment:
+            explanation_lines.append(target_comment)
+        explanation_lines.append("This is an educational preliminary image analysis, not a final genotype call. Final interpretation requires assay target, expected band size, controls, and laboratory validation.")
+
+        return jsonify({
+            "mode": "gel_image_assist",
+            "message": "\n".join(explanation_lines),
+            "lane_count": lane_count,
+            "ladder_lane": ladder_lane,
+            "ladder_bands_detected": len(ladder_ys),
+            "results": results,
+            "annotated_image_base64": annotated_b64
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+# =========================
+# SCAIA PGx Lab Result Interpreter
+# Multimodal educational interpretation
+# =========================
+
+@app.route("/analyze-assay", methods=["POST"])
+def analyze_assay():
+    try:
+        import base64
+        import mimetypes
+        from openai import OpenAI
+
+        if "file" not in request.files:
+            return jsonify({"error": "No image/file uploaded."}), 400
+
+        uploaded = request.files["file"]
+        assay_type = request.form.get("assay_type", "auto")
+        gene_target = request.form.get("gene_target", "").strip()
+        variant_target = request.form.get("variant_target", "").strip()
+        expected_result = request.form.get("expected_result", "").strip()
+        extra_notes = request.form.get("extra_notes", "").strip()
+
+        file_bytes = uploaded.read()
+        filename = uploaded.filename or "uploaded_assay_image"
+        mime_type = uploaded.mimetype or mimetypes.guess_type(filename)[0] or "image/png"
+
+        if not mime_type.startswith("image/"):
+            return jsonify({
+                "error": "This first version accepts images only. PDF/table upload can be added next."
+            }), 400
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            return jsonify({
+                "error": "OPENAI_API_KEY is missing. Add it in Render Environment or terminal."
+            }), 500
+
+        image_b64 = base64.b64encode(file_bytes).decode("utf-8")
+        data_url = f"data:{mime_type};base64,{image_b64}"
+
+        client = OpenAI(api_key=api_key)
+        model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+
+        system = """
+You are SCAIA PGx Lab Result Interpreter.
+
+You help users interpret uploaded pharmacogenomic / molecular assay output images in educational mode.
+
+Supported result types:
+- Gel electrophoresis
+- Sanger sequencing chromatogram
+- qPCR amplification curve
+- Allelic discrimination plot
+- HRM / melt curve
+- Copy number / CNV plot
+- NGS variant table screenshot
+- Unknown molecular assay image
+
+Important safety:
+- Do NOT give a final genotype call from an image alone.
+- Do NOT claim diagnostic certainty.
+- Provide preliminary educational interpretation only.
+- Always state what additional assay details are needed.
+- If the image is not suitable, say why.
+- If the image type is unclear, identify possible types and ask for clarification.
+- If the result could later be used in SCDAid, say it must be confirmed first by the validated laboratory workflow.
+
+Style:
+- Be clear, professional, concise, and useful.
+- If Arabic is appropriate, answer in Arabic with English scientific terms when needed.
+- Focus on what is visible in the image, not assumptions.
+"""
+
+        prompt = f"""
+Analyze this uploaded molecular / pharmacogenomic assay image.
+
+User-selected assay type: {assay_type}
+Gene target if provided: {gene_target or "not provided"}
+Variant/allele target if provided: {variant_target or "not provided"}
+Expected result / expected band size / expected cluster if provided: {expected_result or "not provided"}
+Extra notes: {extra_notes or "none"}
+
+If the assay type is Sanger chromatogram, focus specifically on:
+- chromatogram peak quality
+- peak overlap or noise
+- possible mixed peak / heterozygous pattern
+- whether the highlighted or provided variant position is visible
+- whether reference base, alternate base, position, and read direction are missing
+- whether the image is sufficient for preliminary interpretation
+- do NOT claim a final genotype from image alone
+
+If the assay type is qPCR, focus specifically on:
+- whether amplification curves are visible
+- whether the curve has a true exponential phase or looks like background/noise
+- approximate Ct/Cq context if provided by the user
+- whether positive control and NTC/negative control are shown or missing
+- whether replicates look consistent if visible
+- whether the image supports preliminary positive/negative/indeterminate interpretation
+- do NOT claim a final genotype without assay target, threshold, controls, and lab validation
+
+If the assay type is allelic discrimination, focus specifically on:
+- whether distinct clusters are visible
+- whether sample points appear near WT, heterozygous, mutant, or NTC/no-call regions
+- whether cluster separation is clear or overlapping
+- whether dye/channel labels are provided, e.g., FAM vs VIC/HEX
+- whether control clusters are present and labeled
+- whether the sample can only be described as preliminary/possible
+- do NOT claim a final genotype without validated controls, channel mapping, and lab confirmation
+
+If the assay type is HRM or melt curve, focus specifically on:
+- whether melt curves are visible and readable
+- whether curve shape differs from the WT/reference control
+- whether a Tm shift is visible or provided by the user
+- whether WT, variant, heterozygous, and NTC controls are present
+- whether the result suggests possible variant pattern or is indeterminate
+- do NOT claim a final genotype without validated control curves, Tm thresholds, and lab confirmation
+
+If the assay type is CNV or copy number, focus specifically on:
+- whether the screenshot appears to show copy-number values, CNV plot, MLPA/qPCR CNV output, or a copy-number table
+- whether the result suggests normal copy number, deletion, duplication, or indeterminate/no-call
+- whether expected normal copy number is provided, usually 2 copies for autosomal genes
+- whether a reference gene, calibrator, thresholds, and controls are provided
+- whether CYP2D6 copy-number complexity may require confirmatory testing
+- do NOT claim a final diplotype or genotype without validated CNV workflow and confirmation
+
+If the assay type is NGS variant table, focus specifically on:
+- whether the screenshot appears to show a variant table, report table, or sequencing result summary
+- visible gene, variant, rsID, genomic position, transcript, consequence, zygosity, allele frequency, and coverage/depth
+- whether the variant appears heterozygous, homozygous, or uncertain based only on visible fields
+- whether coverage/depth and quality/filter status are sufficient or missing
+- whether PGx star-allele translation is possible or requires a validated allele-calling tool
+- do NOT claim a final diplotype, phenotype, or clinical recommendation without validated variant calling, allele translation, and lab confirmation
+
+Return the answer using this structure:
+
+1. Image type detected
+2. Image quality / peak clarity
+3. Visible peak pattern
+4. Possible preliminary interpretation
+5. Missing information needed for reliable interpretation
+6. Confidence level: Low / Moderate / High
+7. Can this be applied to SCDAid now? Explain why or why not
+
+For gel images:
+- Mention bands/lanes visually if visible.
+- If exact ladder sizes are not clear, do not invent exact bp sizes.
+- Recommend using the Gel Image Assist tool for ladder-based bp estimation.
+
+For Sanger chromatograms:
+- Discuss peak clarity, possible mixed peaks, and need for reference sequence/position.
+
+For qPCR:
+- Discuss amplification, Ct/threshold/controls needed.
+
+For allelic discrimination:
+- Discuss clusters and need for control labels.
+
+For HRM/melt curve:
+- Discuss curve shift/Tm and need for wild-type/variant controls.
+
+For CNV/copy number:
+- Discuss signal/copy number pattern and need for validated thresholds.
+
+For NGS table:
+- Extract visible gene/variant/zygosity/coverage if readable, but do not overclaim.
+"""
+
+        response = client.responses.create(
+            model=model,
+            input=[
+                {
+                    "role": "system",
+                    "content": system
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": prompt},
+                        {"type": "input_image", "image_url": data_url}
+                    ]
+                }
+            ],
+            temperature=0.25,
+            max_output_tokens=900
+        )
+
+        answer = response.output_text
+
+        return jsonify({
+            "mode": "pgx_lab_result_interpreter",
+            "assay_type": assay_type,
+            "answer": answer
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+
+
+
+# =========================
+# SCAIA Feedback Collection + Safe Learning
+# =========================
+
+def validate_feedback_correction(question, answer, reason, correction):
+    """
+    Classifies user feedback correction before learning.
+    Returns: (decision, cleaned_rule, explanation)
+    decision = approved / pending / rejected
+    """
+    correction = (correction or "").strip()
+    reason = (reason or "").strip()
+
+    if not correction:
+        reason_lower = reason.lower()
+
+        if "عربي" in reason_lower or "arabic" in reason_lower:
+            return (
+                "approved",
+                "If the user writes in Arabic or asks SCAIA to speak Arabic, SCAIA must reply in Arabic.",
+                "Arabic language correction inferred from feedback reason."
+            )
+
+        if "english" in reason_lower or "إنجليزي" in reason_lower or "انجليزي" in reason_lower:
+            return (
+                "approved",
+                "If the user asks for Arabic, SCAIA must not reply in English.",
+                "Language mismatch correction inferred from feedback reason."
+            )
+
+        return "pending", "", "No correction was provided."
+
+    if len(correction) < 12:
+        return "pending", "", "Correction is too short to become a rule."
+
+    if len(correction) > 700:
+        return "pending", "", "Correction is too long and needs review."
+
+    lower = correction.lower()
+
+    dangerous_patterns = [
+        "ignore safety",
+        "ignore clinical judgment",
+        "remove disclaimer",
+        "definitive medical order",
+        "always prescribe",
+        "never monitor",
+        "override physician",
+        "diagnose genotype directly",
+        "final genotype from image",
+        "اعط تشخيص نهائي",
+        "احذف التحذير",
+        "تجاهل السلامة",
+        "لا تذكر التحذير",
+        "صرف الدواء مباشرة",
+        "اعتبرها نتيجة نهائية",
+        "شخص الجين من الصورة مباشرة"
+    ]
+
+    for pat in dangerous_patterns:
+        if pat in lower:
+            return "rejected", "", "Correction conflicts with medical/safety guardrails."
+
+    medical_high_risk_terms = [
+        "dose", "dosing", "opioid", "morphine", "hydromorphone", "fentanyl",
+        "tramadol", "codeine", "ketorolac", "nsaid", "renal", "egfr",
+        "cyp2d6", "cpic", "genotype", "phenotype",
+        "جرعة", "مورفين", "هيدرومورفون", "فنتانيل", "ترامادول", "كودايين",
+        "كلية", "جين", "فينوتايب", "جينوتايب"
+    ]
+
+    if any(term in lower for term in medical_high_risk_terms):
+        return "pending", "", "Medical/PGx correction requires human review before learning."
+
+    safe_rule_patterns = [
+        "reply in arabic",
+        "answer in arabic",
+        "speak arabic",
+        "do not mention",
+        "only mention",
+        "be concise",
+        "ask a clarifying question",
+        "open lab interpreter",
+        "do not open lab",
+        "رد بالعربي",
+        "تكلم عربي",
+        "لا تذكر",
+        "اذكر فقط",
+        "اختصر",
+        "اسأل سؤال توضيحي",
+        "افتح اللاب",
+        "لا تفتح اللاب"
+    ]
+
+    if any(pat in lower for pat in safe_rule_patterns):
+        cleaned = correction.replace("\\n", " ").strip()
+        return "approved", cleaned, "Safe style/routing correction approved."
+
+    return "pending", "", "Correction saved for review but not auto-learned."
+
+
+@app.route("/scaia-feedback", methods=["POST"])
+def scaia_feedback():
+    try:
+        import json
+        from datetime import datetime
+
+        data = request.get_json(force=True) or {}
+
+        feedback_item = {
+            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "rating": data.get("rating", ""),
+            "reason": data.get("reason", ""),
+            "corrected_answer": data.get("corrected_answer", ""),
+            "question": data.get("question", ""),
+            "answer": data.get("answer", ""),
+            "page": data.get("page", "")
+        }
+
+        decision = ""
+        review_note = ""
+
+        if feedback_item.get("rating") == "dislike":
+            decision, cleaned_rule, review_note = validate_feedback_correction(
+                feedback_item.get("question", ""),
+                feedback_item.get("answer", ""),
+                feedback_item.get("reason", ""),
+                feedback_item.get("corrected_answer", "")
+            )
+
+            feedback_item["learning_decision"] = decision
+            feedback_item["learning_review_note"] = review_note
+
+            if decision == "approved" and cleaned_rule:
+                with open("scaia_learned_rules.txt", "a", encoding="utf-8") as rf:
+                    rf.write("\\n- Auto-approved learned rule from feedback: " + cleaned_rule + "\\n")
+
+            elif decision == "pending":
+                with open("scaia_pending_feedback.jsonl", "a", encoding="utf-8") as pf:
+                    pf.write(json.dumps(feedback_item, ensure_ascii=False) + "\\n")
+
+            elif decision == "rejected":
+                with open("scaia_rejected_feedback.jsonl", "a", encoding="utf-8") as rjf:
+                    rjf.write(json.dumps(feedback_item, ensure_ascii=False) + "\\n")
+
+        with open("scaia_feedback.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(feedback_item, ensure_ascii=False) + "\\n")
+
+        return jsonify({
+            "ok": True,
+            "message": "Feedback saved.",
+            "learning_decision": decision,
+            "learning_review_note": review_note
+        })
+
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
 
 
 if __name__ == "__main__":

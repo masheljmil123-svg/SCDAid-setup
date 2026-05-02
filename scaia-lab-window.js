@@ -62,6 +62,96 @@ function shouldOpenLabIntent(text) {
       `;
     }
 
+    if (type === "sanger") {
+      return `
+        <h3>Sanger Chromatogram requirements</h3>
+        <p>SCAIA can assess chromatogram readability and possible mixed peak patterns.</p>
+        <ol>
+          <li>Upload a Sanger chromatogram image.</li>
+          <li>Add gene target if known, e.g., CYP2D6.</li>
+          <li>Add variant / rsID / allele if known, e.g., rs3892097 or *4.</li>
+          <li>Add expected base change if available, e.g., G>A.</li>
+          <li>Add notes such as position, read direction, or sample ID.</li>
+        </ol>
+        <p><b>Note:</b> SCAIA cannot confirm final genotype from a screenshot alone.</p>
+      `;
+    }
+
+    if (type === "qpcr") {
+      return `
+        <h3>qPCR Amplification Curve requirements</h3>
+        <p>SCAIA can assess visible amplification pattern and whether key controls are present.</p>
+        <ol>
+          <li>Upload a qPCR amplification curve image or screenshot.</li>
+          <li>Add gene/assay target, e.g., CYP2D6 or CYP2D6*4 assay.</li>
+          <li>Add Ct/Cq value if known.</li>
+          <li>Add threshold information if available.</li>
+          <li>Add control notes: positive control, negative control/NTC, and replicates.</li>
+        </ol>
+        <p><b>Note:</b> Final interpretation needs assay target, threshold, controls, and lab validation.</p>
+      `;
+    }
+
+    if (type === "allelic_discrimination") {
+      return `
+        <h3>Allelic Discrimination Plot requirements</h3>
+        <p>SCAIA can assess cluster separation and whether a sample appears near WT, heterozygous, mutant, or no-call regions.</p>
+        <ol>
+          <li>Upload an allelic discrimination plot image or screenshot.</li>
+          <li>Add gene/assay target, e.g., CYP2D6*4 or rs3892097.</li>
+          <li>Add dye/channel labels if known, e.g., FAM = mutant, VIC/HEX = wild-type.</li>
+          <li>Add control labels if available: WT control, mutant control, heterozygous control, NTC.</li>
+          <li>Add sample ID or notes if one sample should be interpreted.</li>
+        </ol>
+        <p><b>Note:</b> SCAIA can describe cluster pattern only. Final genotype requires validated assay controls and lab confirmation.</p>
+      `;
+    }
+
+    if (type === "hrm") {
+      return `
+        <h3>HRM / Melt Curve requirements</h3>
+        <p>SCAIA can assess melt curve shape, possible Tm shift, and whether the pattern appears different from controls.</p>
+        <ol>
+          <li>Upload an HRM or melt curve image/screenshot.</li>
+          <li>Add gene/assay target, e.g., CYP2D6 variant assay.</li>
+          <li>Add expected WT Tm or reference curve if known.</li>
+          <li>Add sample Tm value if available.</li>
+          <li>Add control notes: WT control, variant control, heterozygous control, NTC.</li>
+        </ol>
+        <p><b>Note:</b> HRM can suggest differences in melting behavior, but final genotype requires validated controls and confirmation.</p>
+      `;
+    }
+
+    if (type === "cnv") {
+      return `
+        <h3>CNV / Copy Number requirements</h3>
+        <p>SCAIA can assess copy-number result screenshots and explain whether the pattern suggests normal copy number, deletion, duplication, or no-call.</p>
+        <ol>
+          <li>Upload a CNV result image/screenshot, qPCR CNV plot, MLPA summary, or copy-number table screenshot.</li>
+          <li>Add gene target, e.g., CYP2D6.</li>
+          <li>Add expected normal copy number if known, e.g., 2 copies.</li>
+          <li>Add reference gene or calibrator sample if available.</li>
+          <li>Add threshold/cutoff notes, controls, or sample ID.</li>
+        </ol>
+        <p><b>Note:</b> CNV interpretation requires validated thresholds, controls, and confirmatory lab workflow.</p>
+      `;
+    }
+
+    if (type === "ngs_table") {
+      return `
+        <h3>NGS Variant Table requirements</h3>
+        <p>SCAIA can review visible NGS result tables and explain variant fields, zygosity, coverage, and interpretation limitations.</p>
+        <ol>
+          <li>Upload an NGS variant table screenshot or report table image.</li>
+          <li>Add gene target, e.g., CYP2D6, CYP2C19, CYP2C9, or VKORC1.</li>
+          <li>Add variant/rsID if known, e.g., rs3892097.</li>
+          <li>Add coverage/depth, allele frequency, or zygosity if shown.</li>
+          <li>Add notes about panel type, reference genome, or filter status if available.</li>
+        </ol>
+        <p><b>Note:</b> SCAIA can explain visible table fields, but final PGx phenotype requires validated variant calling and allele translation.</p>
+      `;
+    }
+
     const label = assayLabels[type] || assayLabels.auto;
 
     return `
@@ -70,7 +160,6 @@ function shouldOpenLabIntent(text) {
       <ol>
         <li>Upload the assay image or screenshot.</li>
         <li>Add gene target if known, e.g., CYP2D6.</li>
-        <li>Add variant/allele if known, e.g., *4 or rs3892097.</li>
         <li>Add expected result, controls, threshold, or reference info if available.</li>
         <li>SCAIA will explain what is visible and what is missing.</li>
       </ol>
@@ -93,6 +182,96 @@ function shouldOpenLabIntent(text) {
   }
 
   function assayFormHTML(type) {
+    if (type === "sanger") {
+      return `
+        <h3>Sanger Chromatogram Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene target, e.g., CYP2D6">
+          <input id="labVariant" type="text" placeholder="Variant / rsID / allele, e.g., rs3892097 or *4">
+          <input id="labExpected" type="text" placeholder="Expected change, e.g., G>A or reference/alternate base">
+          <input id="labNotes" type="text" placeholder="Position / sample ID / forward or reverse read / notes">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze Sanger Chromatogram</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload a chromatogram image. SCAIA will assess peak clarity, possible mixed peaks, and missing information.</div>
+      `;
+    }
+
+    if (type === "qpcr") {
+      return `
+        <h3>qPCR Curve Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene/assay target, e.g., CYP2D6 or CYP2D6*4">
+          <input id="labVariant" type="text" placeholder="Variant/allele or assay channel, e.g., FAM/HEX">
+          <input id="labExpected" type="text" placeholder="Ct/Cq value or threshold, e.g., Ct 27.4">
+          <input id="labNotes" type="text" placeholder="Controls: positive control, NTC, sample ID, replicate notes">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze qPCR Curve</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload a qPCR amplification plot. SCAIA will assess amplification pattern, Ct/Cq context, controls, and missing information.</div>
+      `;
+    }
+
+    if (type === "allelic_discrimination") {
+      return `
+        <h3>Allelic Discrimination Plot Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene/assay target, e.g., CYP2D6*4">
+          <input id="labVariant" type="text" placeholder="Variant/rsID, e.g., rs3892097">
+          <input id="labExpected" type="text" placeholder="Channel labels, e.g., FAM mutant / VIC wild-type">
+          <input id="labNotes" type="text" placeholder="Controls or sample notes: WT, mutant, heterozygous, NTC">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze Allelic Plot</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload an allelic discrimination plot. SCAIA will assess cluster separation, possible genotype region, controls, and no-call limitations.</div>
+      `;
+    }
+
+    if (type === "hrm") {
+      return `
+        <h3>HRM / Melt Curve Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene/assay target, e.g., CYP2D6 HRM assay">
+          <input id="labVariant" type="text" placeholder="Variant/allele if known, e.g., CYP2D6*4">
+          <input id="labExpected" type="text" placeholder="Expected WT/sample Tm, e.g., WT 78.5°C, sample 77.9°C">
+          <input id="labNotes" type="text" placeholder="Controls: WT, variant, heterozygous, NTC, replicate notes">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze HRM / Melt Curve</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload an HRM/melt curve image. SCAIA will assess curve shape, Tm shift, controls, and whether interpretation is limited.</div>
+      `;
+    }
+
+    if (type === "cnv") {
+      return `
+        <h3>CNV / Copy Number Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene target, e.g., CYP2D6">
+          <input id="labVariant" type="text" placeholder="CNV type if known, e.g., deletion or duplication">
+          <input id="labExpected" type="text" placeholder="Expected normal copy number / observed value, e.g., 2 copies or CN=3">
+          <input id="labNotes" type="text" placeholder="Reference gene, calibrator, cutoff, controls, sample ID">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze CNV / Copy Number</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload a CNV/copy-number result. SCAIA will assess copy-number pattern, controls, thresholds, and limitations.</div>
+      `;
+    }
+
+    if (type === "ngs_table") {
+      return `
+        <h3>NGS Variant Table Interpreter</h3>
+        <div class="scaiaLabFormGrid">
+          <input class="full" id="labAssayFile" type="file" accept="image/png,image/jpeg,image/jpg,image/webp">
+          <input id="labGene" type="text" placeholder="Gene target, e.g., CYP2D6 or CYP2C19">
+          <input id="labVariant" type="text" placeholder="Variant/rsID/allele, e.g., rs3892097 or *4">
+          <input id="labExpected" type="text" placeholder="Coverage / VAF / zygosity, e.g., DP 120, VAF 50%, heterozygous">
+          <input id="labNotes" type="text" placeholder="Panel, reference genome, filter status, transcript, sample ID">
+        </div>
+        <button class="scaiaLabAnalyzeBtn" id="labAnalyzeAssayBtn">Analyze NGS Variant Table</button>
+        <div class="scaiaLabResult" id="labResultBox">Upload an NGS variant table screenshot. SCAIA will assess visible fields, zygosity/coverage context, and PGx interpretation limits.</div>
+      `;
+    }
+
     return `
       <h3>${assayLabels[type] || assayLabels.auto}</h3>
       <div class="scaiaLabFormGrid">

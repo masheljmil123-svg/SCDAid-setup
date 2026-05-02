@@ -8,3 +8,5 @@ pandas
 joblib
 scikit-learn
 numpy
+opencv-python-headless
+pillow
