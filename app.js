@@ -2417,7 +2417,7 @@ window.addEventListener("load", forceAttachSCDAidButtons);
 setTimeout(forceAttachSCDAidButtons, 500);
 setTimeout(forceAttachSCDAidButtons, 1500);
 /* =========================
-   Ask SCDAid top popup chat
+   SCAIA popup chat (single controller)
    ========================= */
 
 (function () {
@@ -2430,7 +2430,7 @@ setTimeout(forceAttachSCDAidButtons, 1500);
   const quickChips = document.querySelectorAll(".scdChip");
 
   if (!overlay || !openBtn || !closeBtn || !chatInput || !chatSendBtn || !chatMessages) {
-    console.log("Top chat elements not found.");
+    console.log("SCAIA chat elements not found.");
     return;
   }
 
@@ -2450,12 +2450,19 @@ setTimeout(forceAttachSCDAidButtons, 1500);
       .replace(/>/g, "&gt;");
   }
 
+  function isArabicText(text) {
+    return /[\u0600-\u06FF]/.test(String(text));
+  }
+
   function addChatMessage(role, text) {
     const wrapper = document.createElement("div");
     wrapper.className = `scdMsg ${role}`;
 
     const bubble = document.createElement("div");
-    bubble.className = "scdBubble";
+    const langClass = isArabicText(text) ? "rtlText" : "ltrText";
+
+    bubble.className = `scdBubble ${langClass}`;
+    bubble.setAttribute("dir", isArabicText(text) ? "rtl" : "ltr");
     bubble.innerHTML = escapeHtml(text);
 
     wrapper.appendChild(bubble);
@@ -2463,36 +2470,36 @@ setTimeout(forceAttachSCDAidButtons, 1500);
     chatMessages.scrollTop = chatMessages.scrollHeight;
   }
 
-  function getValue(idList) {
-    for (const id of idList) {
-      const el = document.getElementById(id);
-      if (!el) continue;
-      if (el.type === "checkbox") return el.checked;
-      return el.value ?? "";
-    }
-    return "";
+  function getValue(id) {
+    const el = document.getElementById(id);
+    if (!el) return "";
+    if (el.type === "checkbox") return el.checked ? "yes" : "no";
+    return el.value || "";
   }
 
   function collectScdContext() {
     return {
-      age: getValue(["age", "patientAge"]),
-      weight: getValue(["weight", "patientWeight"]),
-      egfr: getValue(["egfr", "eGFR"]),
-      pain_severity: getValue(["painSeverity"]),
-      genotype_availability: getValue(["genotypeAvailability", "cyp2d6GenotypeAvailability"]),
-      cyp2d6_phenotype: getValue(["phenotype", "cyp2d6Phenotype"]),
-      sex: getValue(["sex"]),
-      spo2: getValue(["spo2", "spO2"]),
-      inhibitor_medication: getValue(["inhibitorMedication", "cyp2d6InhibitorMedication"]),
-      inhibitor_strength: getValue(["inhibitorStrength", "cyp2d6InhibitorStrength"]),
-      prior_codeine_response: getValue(["codeineResponse", "priorCodeineResponse"]),
-      prior_tramadol_response: getValue(["tramadolResponse", "priorTramadolResponse"]),
-      inflammation_type: getValue(["inflammationType"]),
-      inflammation_severity: getValue(["inflammationSeverity"]),
-      toxicity_type: getValue(["toxicityType"]),
-      morphine_allergy: getValue(["morphineAllergy"]),
-      suspected_acs: getValue(["suspectedACS"]),
-      respiratory_risk: getValue(["respiratoryRisk"])
+      patient_summary: {
+        age: getValue("ageInput"),
+        weight_kg: getValue("weightInput"),
+        egfr: getValue("gfrInput"),
+        pain_severity: getValue("severityInput"),
+        spo2: getValue("spo2Input"),
+        cyp2d6_phenotype: getValue("cyp2d6Input"),
+        cyp2d6_inhibitor_drug: getValue("cyp2d6InhibitorDrugInput"),
+        cyp2d6_inhibitor_strength: getValue("inhibitorLevelInput"),
+        prior_codeine_response: getValue("codeineRespInput"),
+        prior_tramadol_response: getValue("tramadolRespInput"),
+        inflammation_type: getValue("inflammationTypeInput"),
+        inflammation_severity: getValue("inflammationInput"),
+        previous_opioid_toxicity: getValue("opioidToxicityInput"),
+        opioid_toxicity_type: getValue("opioidToxicityTypeInput"),
+        morphine_allergy: getValue("morphineAllergy"),
+        suspected_acs: getValue("suspectedACS"),
+        respiratory_risk: getValue("respRisk"),
+        sedatives: getValue("sedatives")
+      },
+      last_result: window.lastSCDAidContext || {}
     };
   }
 
@@ -2512,9 +2519,12 @@ setTimeout(forceAttachSCDAidButtons, 1500);
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          message: message,
           question: message,
-          context: collectScdContext()
+          message: message,
+          context: collectScdContext(),
+          chat_history: Array.from(document.querySelectorAll(".scdMsg .scdBubble"))
+            .slice(-8)
+            .map((bubble) => bubble.innerText)
         })
       });
 
@@ -2534,9 +2544,9 @@ setTimeout(forceAttachSCDAidButtons, 1500);
     } catch (error) {
       addChatMessage(
         "bot",
-        "Sorry, the Ask SCDAid chat is not responding correctly right now. Please check the /chat endpoint in app.py."
+        "Sorry, SCAIA is not responding correctly right now. Please check the /chat endpoint in app.py."
       );
-      console.error("Ask SCDAid chat error:", error);
+      console.error("SCAIA chat error:", error);
     } finally {
       chatSendBtn.disabled = false;
       chatSendBtn.textContent = "Ask";
@@ -2552,7 +2562,9 @@ setTimeout(forceAttachSCDAidButtons, 1500);
   });
 
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") closeScdChat();
+    if (e.key === "Escape" && !overlay.classList.contains("hidden")) {
+      closeScdChat();
+    }
   });
 
   chatSendBtn.addEventListener("click", askScdChat);
@@ -2570,6 +2582,4 @@ setTimeout(forceAttachSCDAidButtons, 1500);
       askScdChat();
     });
   });
-
-  console.log("Top Ask SCDAid popup loaded.");
 })();
