@@ -41,6 +41,33 @@ SCDAid should avoid or flag codeine and tramadol in CYP2D6 PM or UM.
 If genotype is unknown, SCDAid should avoid CYP2D6-dependent opioids when possible and monitor carefully.
 CPIC provides therapeutic recommendations for CYP2D6 genotype results for codeine and tramadol. Evidence is weaker or limited for some other opioids and for OPRM1/COMT.
 
+CYP2D6 GENOTYPE PREDICTION (SCAIA CONCISE ANSWER)
+
+When users ask whether AI can predict or infer CYP2D6 genotype from symptoms, VOC pain response, or SCD history alone, SCAIA should answer briefly using this substance (verbatim when using local routing):
+
+No, not reliably. AI cannot determine CYP2D6 genotype from symptoms, VOC pain response, or SCD history alone. These clinical features are not sufficient to confirm genotype.
+
+AI may only support probabilistic genotype estimation when broader genetic data are available, such as CYP2D6 sequencing, copy-number information, structural variants, or phasing data.
+
+For SCDAid, the core workflow should remain CPIC-based genotype-to-phenotype translation using confirmed allele/genotype data, followed by phenoconversion adjustment and then analgesic recommendation support. AI-based genotype imputation should remain an optional future layer, not the current clinical foundation.
+
+SAUDI CYP2D6 / PGx CONTEXT
+
+SCDAid is designed for Saudi / Arabian Gulf sickle cell care contexts, but CYP2D6 genotype-to-phenotype translation remains CPIC-based. Saudi population information is a knowledge and documentation layer for test readiness, panel coverage, and teaching—it does not replace patient-specific genotyping and must not override CPIC allele-to-activity rules when alleles are known.
+
+Do not infer or assign CYP2D6 genotype, star alleles, copy number, or phenotype from Saudi nationality, Saudi residency, or “Arab” ethnicity alone. Do not claim all Saudis share one genotype. Population frequencies may inform prior probability and which alleles/CNVs a laboratory panel should not miss; they must not be substituted for an individual patient’s measured genotype in SCDAid inputs.
+
+When CYP2D6 genotype or star-allele data are unavailable, treat CYP2D6 as unknown for CPIC translation, recommend preemptive PGx testing when appropriate, and avoid codeine/tramadol reliance consistent with unknown-metabolizer precautions—same as for any patient without genotype, regardless of country.
+
+Saudi / Arabian Peninsula PGx awareness points (literature-informed, not patient-specific):
+- CYP2D6*41 has been reported at relatively high frequency in some Saudi and broader Arabian Peninsula cohorts compared with many Western European reference cohorts; *41 is a decreased-function star allele in CPIC tables and should not be missed if the assay reports it.
+- CYP2D6 copy-number variation (gene deletion, duplication, or higher-level multiplication) has been reported in regional populations and should be part of comprehensive testing interpretation when the pipeline supports it.
+- CYP2D6*4 (no function) and *10 (decreased function) occur in the region, but their population frequencies may differ from other global reference populations—again relevant to panel design and prior probability, not to assigning an untested patient’s diplotype.
+
+Ideal CYP2D6 testing coverage for Saudi patients (when ordering preemptive PGx) should aim to resolve: normal-function alleles; decreased-function alleles such as *10 and *41; no-function alleles such as *4 and *5; and copy-number variation (deletion/duplication/multiplication), with phasing or full diplotype interpretation when the assay and informatics support it. SCDAid expects structured allele or diplotype inputs where available and does not rely on a single SNP to stand in for a full star-allele call.
+
+When users ask about “Saudi CYP2D6” or “Saudi PGx context,” SCAIA should briefly summarize the bullets above, emphasize CPIC-based translation once genotypes exist, and restate that nationality does not replace testing. When users ask whether being Saudi implies a specific genotype or phenotype without test results, SCAIA must refuse the inference and recommend formal CYP2D6 PGx testing.
+
 Phenoconversion:
 Phenoconversion means the functional phenotype can differ from the genetic phenotype because of inhibitors or illness.
 A patient genetically NM/EM can behave like a reduced-function phenotype if taking a strong CYP2D6 inhibitor.
@@ -183,6 +210,7 @@ SCDAid separates prediction from clinical decision-making.
 
 Step 1: Functional CYP2D6 Phenotype Prediction
 The AI prediction layer estimates the functional CYP2D6 phenotype only.
+This is not the same as inferring CYP2D6 genotype from symptoms or SCD history; see “CYP2D6 GENOTYPE PREDICTION (SCAIA CONCISE ANSWER)” above. When confirmed alleles are provided, SCDAid’s CPIC-based translation path is the authoritative genotype-to-phenotype layer for that input.
 It should not be described as making the final analgesic decision.
 Its output can be PM, IM, NM/EM, or UM, with explanation and confidence when available.
 

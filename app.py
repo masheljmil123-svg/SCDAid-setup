@@ -4,6 +4,12 @@ import pandas as pd
 import joblib
 import os
 
+from cyp2d6_engine import translate_cyp2d6_from_alleles
+from scdaid_decision_engine import (
+    enrich_explanation_with_cyp2d6,
+    merge_functional_with_cyp2d6,
+)
+
 
 app = Flask(__name__, static_folder=".", static_url_path="")
 CORS(app)
@@ -426,8 +432,28 @@ def predict():
         previous_codeine_failure = clean_text_value(data.get("previous_codeine_failure"), "no")
         previous_opioid_toxicity = clean_text_value(data.get("previous_opioid_toxicity"), "no")
 
+        allele1 = data.get("cyp2d6_allele1")
+        allele2 = data.get("cyp2d6_allele2")
+        diplotype_in = data.get("cyp2d6_diplotype")
+        selected_phenotype_ui = data.get("cyp2d6_selected_phenotype")
+        if selected_phenotype_ui is None or str(selected_phenotype_ui).strip() == "":
+            selected_phenotype_ui = data.get("cyp2d6_manual_phenotype")
+
+        cyp2d6_translation = translate_cyp2d6_from_alleles(
+            allele1,
+            allele2,
+            diplotype_in,
+            cyp2d6_inhibitor,
+            selected_phenotype_ui,
+        )
+
         renal_risk = renal_risk_from_egfr(egfr)
-        baseline_phenotype = phenotype_from_as(cyp2d6_activity_score)
+
+        if cyp2d6_translation.get("ok"):
+            cyp2d6_activity_score = float(cyp2d6_translation["clinical_activity_score"])
+            baseline_phenotype = cyp2d6_translation["genetic_phenotype"]
+        else:
+            baseline_phenotype = phenotype_from_as(cyp2d6_activity_score)
 
         patient = {
             "age": age,
@@ -445,15 +471,23 @@ def predict():
             "cyp2d6_inhibitor": cyp2d6_inhibitor,
             "inflammation": inflammation,
             "previous_codeine_failure": previous_codeine_failure,
-            "previous_opioid_toxicity": previous_opioid_toxicity
+            "previous_opioid_toxicity": previous_opioid_toxicity,
+            "cyp2d6_translation_applied": bool(cyp2d6_translation.get("ok")),
         }
 
         patient_df = pd.DataFrame([patient])
 
-        # AI predictions
+        # AI predictions (analgesic / safety); functional model may be overridden by CPIC translation
         functional_prediction, functional_conf, functional_probs = predict_with_confidence(
             functional_model,
             patient_df
+        )
+
+        functional_prediction, functional_conf, functional_probs = merge_functional_with_cyp2d6(
+            functional_prediction,
+            functional_conf,
+            functional_probs,
+            cyp2d6_translation,
         )
 
         analgesic_prediction, analgesic_conf, analgesic_probs = predict_with_confidence(
@@ -505,9 +539,19 @@ def predict():
             safety_prediction,
             override_notes
         )
+        explanation = enrich_explanation_with_cyp2d6(explanation, cyp2d6_translation)
+
+        disclaimer = (
+            "Proof-of-concept: analgesic and safety outputs use ML models trained on clinically informed synthetic data, "
+            "with guideline-based safety guardrails. "
+            "When CYP2D6 star alleles are provided, functional phenotype is derived from a "
+            "CPIC-based genotype-to-phenotype translation engine (not symptom-based AI). "
+            "Not for real clinical use without validation."
+        )
 
         result = {
             "patient_summary": patient,
+            "cyp2d6_translation": cyp2d6_translation,
             "functional_phenotype": {
                 "prediction": functional_prediction,
                 "confidence": functional_conf,
@@ -525,7 +569,7 @@ def predict():
             },
             "clinical_explanation": explanation,
             "guardrails_applied": override_notes,
-            "disclaimer": "Proof-of-concept AI model trained on clinically informed synthetic data with guideline-based safety guardrails. Not for real clinical use without validation."
+            "disclaimer": disclaimer,
         }
 
         return jsonify(result)
@@ -636,6 +680,106 @@ def local_arabic_dialect_intent_answer(question):
     return None
 
 
+# UI-ready answer for genotype-from-symptoms / SCD history / VOC pain methodology questions.
+# Single source for /chat early return, OpenAI-error fallback, and local_scdaid_answer.
+CYP2D6_GENOTYPE_PREDICTION_CONCISE_REPLY = (
+    "No, not reliably. AI cannot determine CYP2D6 genotype from symptoms, VOC pain response, "
+    "or SCD history alone. These clinical features are not sufficient to confirm genotype.\n\n"
+    "AI may only support probabilistic genotype estimation when broader genetic data are "
+    "available, such as CYP2D6 sequencing, copy-number information, structural variants, or "
+    "phasing data.\n\n"
+    "For SCDAid, the core workflow should remain CPIC-based genotype-to-phenotype translation "
+    "using confirmed allele/genotype data, followed by phenoconversion adjustment and then "
+    "analgesic recommendation support. AI-based genotype imputation should remain an optional "
+    "future layer, not the current clinical foundation."
+)
+
+
+def format_genotype_prediction_knowledge_reply(question):
+    """
+    Exclusive reply for genotype-prediction / genotype-to-phenotype methodology questions.
+    Always the same concise text (no file extraction, no offline notes).
+    """
+    _ = question  # signature kept for callers
+    return CYP2D6_GENOTYPE_PREDICTION_CONCISE_REPLY
+
+
+def should_route_genotype_prediction_to_knowledge_base(question):
+    """
+    True when the user is asking about inferring/ predicting CYP2D6 genotype from
+    clinical presentation, AI/ML, or genotype-to-phenotype translation — not a VOC vignette.
+    """
+    q = str(question or "").strip()
+    if not q:
+        return False
+    ql = q.lower()
+
+    topic = (
+        "cyp2d6" in ql
+        or "genotype" in ql
+        or "diplotype" in ql
+        or ("allele" in ql and ("cyp2d6" in ql or "copy number" in ql or "cnv" in ql or "structural" in ql))
+    )
+    if not topic:
+        return False
+
+    methodology_en = [
+        "predict", "prediction", "infer", "inference", "imput", "symptom", "symptoms",
+        "clinical data", "scd history", "pain response", "machine learning",
+        " can ai", "can ai", "does ai", "could ai", "will ai", " ai infer",
+        "genotype-to-phenotype", "phenotype translation",
+        "without laboratory", "without lab", "without genetic",
+        "reliable", "sufficient to determine", "difference between",
+        "from symptoms", "from clinical presentation", "estimate genotype",
+        "guessing genotype", "guess genotype", "infer genotype",
+        "predict genotype", "imputation",
+    ]
+    if any(m in ql for m in methodology_en):
+        return True
+    if "translation" in ql and ("genotype" in ql or "phenotype" in ql or "cpic" in ql):
+        return True
+
+    if text_contains_arabic(q):
+        if ("جين" in q or "جينات" in q or "cyp2d6" in ql) and any(
+            x in q for x in ("تنبؤ", "استنتاج", "أعراض", "الأعراض", "ذكاء", "اصطناعي", "توقع", "من التاريخ")
+        ):
+            return True
+
+    return False
+
+
+def triggers_voc_case_template_answer(q_lower):
+    """
+    The legacy canned response describes a multi-variable VOC scenario (renal + resp + CYP2D6).
+    Only use it when the question looks like that kind of case, not for single-topic queries.
+    """
+    score = 0
+    if "egfr" in q_lower or " gfr" in q_lower or q_lower.startswith("gfr"):
+        score += 1
+    if "spo2" in q_lower or "o2 sat" in q_lower:
+        score += 1
+    if any(w in q_lower for w in ("voc", "vaso-occlusive", "vasoocclusive", "sickle cell", " sickle ")):
+        score += 1
+    if any(w in q_lower for w in ("fluoxetine", "paroxetine", "bupropion")):
+        score += 1
+    if any(
+        w in q_lower
+        for w in (
+            "patient",
+            "case",
+            "scenario",
+            "year-old",
+            "year old",
+            " y/o",
+            " yo ",
+            "56-year",
+            "58-year",
+        )
+    ):
+        score += 1
+    return score >= 2
+
+
 def local_scdaid_answer(question, context=None):
     """
     Smarter local fallback when OpenAI is unavailable.
@@ -657,6 +801,9 @@ def local_scdaid_answer(question, context=None):
         if dialect_answer:
             return dialect_answer
 
+    if should_route_genotype_prediction_to_knowledge_base(q):
+        return format_genotype_prediction_knowledge_reply(q)
+
     clinical_terms = [
         "voc", "sickle", "scd", "cyp2d6", "egfr", "spo2", "fluoxetine",
         "paroxetine", "renal", "respiratory", "acs", "opioid", "morphine",
@@ -667,8 +814,9 @@ def local_scdaid_answer(question, context=None):
     ]
 
     is_case = any(term in q_lower for term in clinical_terms)
+    use_voc_case_template = is_case and triggers_voc_case_template_answer(q_lower)
 
-    if wants_arabic and is_case:
+    if wants_arabic and use_voc_case_template:
         return """هذا سؤال clinical reasoning، لذلك SCAIA المفروض يجاوب داخل الشات ولا يفتح Lab Interpreter؛ لأنه ما فيه طلب رفع صورة أو تحليل مختبري.
 
 التحليل المنطقي حسب SCDAid:
@@ -683,7 +831,7 @@ def local_scdaid_answer(question, context=None):
 
 الخلاصة: SCAIA يجب أن يشرح أن fluoxetine يجعل codeine/tramadol غير مناسبين، eGFR 42 يدعم الحذر الكلوي وقد يميل إلى hydromorphone بدل morphine، وSpO2 93% يتطلب تقييم respiratory/ACS ومراقبة لصيقة. هذا تفسير تعليمي وليس أمرًا علاجيًا نهائيًا."""
 
-    if (not wants_arabic) and is_case:
+    if (not wants_arabic) and use_voc_case_template:
         return """This is a clinical reasoning question, so SCAIA should answer in chat and should not open the Lab Interpreter unless the user asks to upload or analyze a lab image.
 
 Reasoning:
@@ -772,6 +920,12 @@ def chat():
             return jsonify({
                 "answer": "أكيد، من الآن برد عليك بالعربي. اسألني عن SCDAid أو SCAIA أو التحاليل، وبشرح لك بشكل واضح.",
                 "mode": "arabic_direct"
+            })
+
+        if should_route_genotype_prediction_to_knowledge_base(str(question)):
+            return jsonify({
+                "answer": format_genotype_prediction_knowledge_reply(question),
+                "mode": "genotype_knowledge_only",
             })
 
         api_key = os.getenv("OPENAI_API_KEY")
@@ -877,6 +1031,11 @@ Keep the answer clinically clear, accurate, conversational, and not too long.
             })
 
         except Exception as ai_error:
+            if should_route_genotype_prediction_to_knowledge_base(str(question)):
+                return jsonify({
+                    "answer": format_genotype_prediction_knowledge_reply(question),
+                    "mode": "genotype_knowledge_only",
+                })
             fallback = local_scdaid_answer(question, context)
             return jsonify({
                 "answer": fallback + "\n\nNote: OpenAI knowledge mode failed, so SCDAid answered in local mode. Backend error: " + str(ai_error),

@@ -47,7 +47,7 @@ const TXT = {
     placeholderText: 'Enter inputs then click "Run Algorithm".',
     refsTitle: "References",
 
-    phenoPredTitle: "Phenotype Prediction (API)",
+    phenoPredTitle: "Functional CYP2D6 Phenotype Prediction",
     phenoPredHint:
       "Optional: use API to predict CYP2D6 phenotype and auto-fill the field above.",
     sexLabel: "Sex",
@@ -55,7 +55,7 @@ const TXT = {
     inhibitorHint: "Examples: strong CYP2D6 inhibitors may reduce CYP2D6 activity.",
     codeineRespLabel: "Prior codeine response",
     tramadolRespLabel: "Prior tramadol response",
-    predictBtn: "Predict Phenotype",
+    predictBtn: "Predict",
     predictStatusIdle: "API-based phenotype prediction.",
     predictLoading: "Predicting…",
     predictApplied: "Applied to CYP2D6 phenotype.",
@@ -105,7 +105,14 @@ const TXT = {
       age: "Age is required.",
       weight: "Weight is required.",
       egfr: "eGFR is required.",
+      ageInvalid: "Age must be a positive number.",
+      weightInvalid: "Weight must be a positive number.",
+      egfrInvalid: "eGFR must be zero or greater.",
+      spo2Invalid: "SpO₂ must be a valid number when entered.",
+      spo2Range: "SpO₂ must be between 0 and 100 when entered.",
     },
+    cyp2d6MismatchWarning:
+      "Manual CYP2D6 phenotype conflicts with allele-derived CPIC translation. Review genotype/phenotype inputs before using the recommendation.",
   },
 
   AR: {
@@ -137,14 +144,14 @@ const TXT = {
     placeholderText: "ادخل البيانات ثم اضغط تشغيل الخوارزمية.",
     refsTitle: "المراجع",
 
-    phenoPredTitle: "تنبؤ الفينوتايب (API)",
+    phenoPredTitle: "التنبؤ الوظيفي لفينوتايب CYP2D6",
     phenoPredHint: "اختياري: استخدمي الـ API للتنبؤ بـ CYP2D6 وتعبئة الخانة تلقائيًا.",
     sexLabel: "الجنس",
     inhibitorLabel: "مثبط CYP2D6",
     inhibitorHint: "مثال: بعض المثبطات القوية تقلل نشاط CYP2D6.",
     codeineRespLabel: "استجابة سابقة للكودايين",
     tramadolRespLabel: "استجابة سابقة للترامادول",
-    predictBtn: "تنبؤ الفينوتايب",
+    predictBtn: "تنبأ",
     predictStatusIdle: "تنبؤ الفينوتايب عبر API.",
     predictLoading: "جاري التنبؤ…",
     predictApplied: "تمت تعبئة الفينوتايب في الأعلى.",
@@ -194,7 +201,14 @@ const TXT = {
       age: "العمر مطلوب.",
       weight: "الوزن مطلوب.",
       egfr: "eGFR مطلوب.",
+      ageInvalid: "العمر يجب أن يكون رقمًا موجبًا.",
+      weightInvalid: "الوزن يجب أن يكون رقمًا موجبًا.",
+      egfrInvalid: "eGFR يجب ألا يكون سالبًا.",
+      spo2Invalid: "SpO₂ يجب أن يكون رقمًا صالحًا عند الإدخال.",
+      spo2Range: "SpO₂ يجب أن يكون بين 0 و 100 عند الإدخال.",
     },
+    cyp2d6MismatchWarning:
+      "الفينوتايب اليدوي لـ CYP2D6 يتعارض مع الترجمة المشتقة من الأليل وفق CPIC. راجع المدخلات الجينية/الفينوتايبية قبل الاعتماد على التوصية.",
   },
 };
 
@@ -202,6 +216,46 @@ const TXT = {
 function num(v) {
   const x = Number(String(v ?? "").trim());
   return Number.isFinite(x) ? x : null;
+}
+
+function normalizePhenotypeForMismatchCompare(ph) {
+  if (ph == null || String(ph).trim() === "") return "";
+  const u = String(ph).trim().toUpperCase();
+  if (u === "NM") return "EM";
+  return u;
+}
+
+function cyp2d6PhenotypesEquivalent(a, b) {
+  return normalizePhenotypeForMismatchCompare(a) === normalizePhenotypeForMismatchCompare(b);
+}
+
+function collectSpo2InputState() {
+  const el = $("spo2Input");
+  if (!el) return { spo2Numeric: null, spo2Provided: false };
+  const raw = String(el.value ?? "").trim();
+  if (raw === "") return { spo2Numeric: null, spo2Provided: false };
+  return { spo2Numeric: num(el.value), spo2Provided: true };
+}
+
+function patientFieldErrors({ age, weightKg, eGFR, spo2Numeric, spo2Provided }) {
+  const t = TXT[lang];
+  const errs = [];
+
+  if (age === null) errs.push(t.errors.age);
+  else if (!Number.isFinite(age) || age <= 0) errs.push(t.errors.ageInvalid);
+
+  if (weightKg === null) errs.push(t.errors.weight);
+  else if (!Number.isFinite(weightKg) || weightKg <= 0) errs.push(t.errors.weightInvalid);
+
+  if (eGFR === null) errs.push(t.errors.egfr);
+  else if (!Number.isFinite(eGFR) || eGFR < 0) errs.push(t.errors.egfrInvalid);
+
+  if (spo2Provided) {
+    if (spo2Numeric === null || !Number.isFinite(spo2Numeric)) errs.push(t.errors.spo2Invalid);
+    else if (spo2Numeric < 0 || spo2Numeric > 100) errs.push(t.errors.spo2Range);
+  }
+
+  return errs;
 }
 
 function lbToKg(lb) {
@@ -690,6 +744,16 @@ function criticalFlags(inputs, model) {
     flags.push("Respiratory risk is ON: monitor RR, SpO2, and sedation closely when opioids are used.");
   }
 
+  if (
+    inputs.spo2Numeric !== null &&
+    Number.isFinite(inputs.spo2Numeric) &&
+    inputs.spo2Numeric < 95
+  ) {
+    flags.push(
+      "SpO2 below 95%: increased concern for hypoxia and acute chest syndrome. Monitor SpO2 and respiratory status closely; reassess for oxygen therapy and ACS evaluation per protocol."
+    );
+  }
+
   if (inputs.sedatives) {
     flags.push("Concurrent sedatives are ON: increased risk of oversedation and respiratory depression.");
   }
@@ -704,6 +768,10 @@ function criticalFlags(inputs, model) {
 
   if (model.renalRisk === "high") {
     flags.push("eGFR indicates high renal risk: avoid NSAIDs and avoid morphine accumulation when possible.");
+  }
+
+  if (inputs.cyp2d6MismatchWarning) {
+    flags.push(inputs.cyp2d6MismatchWarning);
   }
 
   return flags;
@@ -723,14 +791,24 @@ function readInputs() {
   const eGFR = num($("gfrInput")?.value);
   const genoAvail = $("genoAvail")?.value || "known";
 
-  let phenotype = genoAvail === "unknown" ? "EM" : $("cyp2d6Input")?.value || "EM";
+  const phenoEl = $("cyp2d6Input");
+  const cyp2d6ManualSelection =
+    genoAvail === "unknown" || !phenoEl
+      ? null
+      : phenoEl.dataset.manualCyp2d6Phenotype != null && String(phenoEl.dataset.manualCyp2d6Phenotype).trim() !== ""
+        ? String(phenoEl.dataset.manualCyp2d6Phenotype).trim()
+        : (phenoEl.value || "EM").trim();
 
-  const allele1 = $("cyp2d6_allele1")?.value || "";
-  const allele2 = $("cyp2d6_allele2")?.value || "";
+  let phenotype = genoAvail === "unknown" ? "EM" : cyp2d6ManualSelection || "EM";
+
+  const allele1 = ($("cyp2d6_allele1")?.value || "").trim();
+  const allele2 = ($("cyp2d6_allele2")?.value || "").trim();
 
   let activityScore = null;
+  let cyp2d6MismatchWarning = null;
+  const t = TXT[lang];
 
-  if (genoAvail !== "unknown" && (allele1.trim() || allele2.trim())) {
+  if (genoAvail !== "unknown" && allele1 && allele2) {
     const out = calcCYP2D6ActivityScoreFromAlleles(allele1, allele2);
     activityScore = out.score;
 
@@ -738,6 +816,9 @@ function readInputs() {
       const phFromAS = cyp2d6PhenotypeFromAS(activityScore);
 
       if (phFromAS) {
+        if (!cyp2d6PhenotypesEquivalent(cyp2d6ManualSelection, phFromAS)) {
+          cyp2d6MismatchWarning = t.cyp2d6MismatchWarning;
+        }
         phenotype = phFromAS;
       }
 
@@ -752,6 +833,8 @@ function readInputs() {
     }
   }
 
+  const spo2State = collectSpo2InputState();
+
   const oprm1Genotype = $("oprm1_genotype")?.value || "";
   const comtGenotype = $("comt_genotype")?.value || "";
   const nephropathy = !!$("flag_nephropathy")?.checked;
@@ -765,6 +848,10 @@ function readInputs() {
     genoAvail,
     phenotype,
     activityScore,
+    cyp2d6ManualSelection,
+    cyp2d6MismatchWarning,
+    spo2Numeric: spo2State.spo2Numeric,
+    spo2Provided: spo2State.spo2Provided,
     oprm1Genotype,
     comtGenotype,
     nephropathy,
@@ -778,14 +865,13 @@ function readInputs() {
 }
 
 function validate(inputs) {
-  const t = TXT[lang];
-  const errs = [];
-
-  if (inputs.age === null) errs.push(t.errors.age);
-  if (inputs.weightKg === null) errs.push(t.errors.weight);
-  if (inputs.eGFR === null) errs.push(t.errors.egfr);
-
-  return errs;
+  return patientFieldErrors({
+    age: inputs.age,
+    weightKg: inputs.weightKg,
+    eGFR: inputs.eGFR,
+    spo2Numeric: inputs.spo2Numeric,
+    spo2Provided: inputs.spo2Provided,
+  });
 }
 
 // ---------- Auto-save to SCDAid Learn ----------
@@ -878,12 +964,15 @@ async function predictPhenotype() {
   }
 
   const egfr = num($("gfrInput")?.value);
+  const spo2State = collectSpo2InputState();
 
-  const errs = [];
-
-  if (age === null) errs.push(t.errors.age);
-  if (weightKg === null) errs.push(t.errors.weight);
-  if (egfr === null) errs.push(t.errors.egfr);
+  const errs = patientFieldErrors({
+    age,
+    weightKg,
+    eGFR: egfr,
+    spo2Numeric: spo2State.spo2Numeric,
+    spo2Provided: spo2State.spo2Provided,
+  });
 
   if (errs.length) {
     alert(errs.join("\n"));
@@ -991,6 +1080,14 @@ function render(model) {
     geneticsLines.push(`CYP2D6 phenotype: <b>${cyp2d6Label(model.phenotype)}</b>`);
   }
 
+  if (model.cyp2d6MismatchWarning && model.cyp2d6ManualSelection) {
+    geneticsLines.push(
+      `<span class="hint"><b>Manual vs allele-derived:</b> Phenotype selector was <b>${cyp2d6Label(
+        model.cyp2d6ManualSelection
+      )}</b>; recommendations use allele-based CPIC translation <b>${cyp2d6Label(model.phenotype)}</b>.</span>`
+    );
+  }
+
   const oprm1 = oprm1Note(model.oprm1Genotype);
   if (oprm1) {
     geneticsLines.push(
@@ -1038,9 +1135,7 @@ function render(model) {
     `
       : "";
 
-  const html = `
-    ${criticalBox}
-
+  const htmlDetails = `
     <div class="box">
       <h3>${t.sections.renal}</h3>
       <div class="pills">${renalPill}<span class="pill info">NSAID</span>${nsaidPill}</div>
@@ -1092,7 +1187,32 @@ function render(model) {
     </div>
   `;
 
-  $("results").innerHTML = html;
+  $("results").innerHTML = `
+    <div class="resultBlock predictionOutput">
+      ${
+        criticalBox
+          ? `<div class="resultAlertStrip resultAlertStrip--danger">${criticalBox}</div>`
+          : ""
+      }
+      <div class="resultCard predictionClassicSummary">
+        <h4>Summary</h4>
+        <div class="pillRow">
+          ${renalPill}
+          <span class="pill info">Opioid: <b>${model.opioid}</b></span>
+          <span class="pill info">${cyp2d6Label(model.phenotype)}</span>
+        </div>
+      </div>
+      <details class="predictionDetails">
+        <summary class="predictionDetailsSummary">
+          <span class="predSumClosed">Show full recommendation details ▼</span>
+          <span class="predSumOpen">Hide full recommendation details ▲</span>
+        </summary>
+        <div class="predictionDetailsInner">
+          ${htmlDetails}
+        </div>
+      </details>
+    </div>
+  `;
 }
 
 // ---------- Language ----------
@@ -1223,6 +1343,8 @@ function run() {
 
     phenotype: inputs.phenotype,
     activityScore: inputs.activityScore,
+    cyp2d6ManualSelection: inputs.cyp2d6ManualSelection,
+    cyp2d6MismatchWarning: inputs.cyp2d6MismatchWarning,
     oprm1Genotype: inputs.oprm1Genotype,
     comtGenotype: inputs.comtGenotype,
     nephropathy: inputs.nephropathy,
@@ -1249,6 +1371,7 @@ function reset() {
   $("genoAvail").value = "known";
   $("cyp2d6Input").value = "EM";
   $("cyp2d6Input").disabled = false;
+  delete $("cyp2d6Input").dataset.manualCyp2d6Phenotype;
 
   if ($("cyp2d6_allele1")) $("cyp2d6_allele1").value = "";
   if ($("cyp2d6_allele2")) $("cyp2d6_allele2").value = "";
@@ -1280,10 +1403,14 @@ function reset() {
 }
 
 function initLinks() {
-  $("mohLink").href = LINKS.MOH;
-  $("cpicLink").href = LINKS.CPIC;
-  $("ashLink").href = LINKS.ASH;
-  $("owsianyLink").href = LINKS.OWSIANY;
+  const moh = $("mohLink");
+  const cpic = $("cpicLink");
+  const ash = $("ashLink");
+  const ows = $("owsianyLink");
+  if (moh) moh.href = LINKS.MOH;
+  if (cpic) cpic.href = LINKS.CPIC;
+  if (ash) ash.href = LINKS.ASH;
+  if (ows) ows.href = LINKS.OWSIANY;
 }
 
 function initOptionalGeneUI() {
@@ -1323,6 +1450,10 @@ function initAlleleUI() {
 
   if (!a1 || !a2 || !phenoSel) return;
 
+  phenoSel.addEventListener("change", () => {
+    phenoSel.dataset.manualCyp2d6Phenotype = phenoSel.value;
+  });
+
   function apply() {
     const genoAvail = $("genoAvail")?.value || "known";
 
@@ -1350,19 +1481,30 @@ function init() {
   initLinks();
   setLang("EN");
 
-  $("langToggle").addEventListener("click", () => {
-    setLang(lang === "EN" ? "AR" : "EN");
-  });
+  const langToggle = $("langToggle");
+  if (langToggle) {
+    langToggle.addEventListener("click", () => {
+      setLang(lang === "EN" ? "AR" : "EN");
+    });
+  }
 
-  $("runBtn").addEventListener("click", run);
-  $("resetBtn").addEventListener("click", reset);
+  const runBtn = $("runBtn");
+  const resetBtn = $("resetBtn");
+  const predictBtn = $("predictBtn");
+  const genoAvail = $("genoAvail");
+  const cyp2d6Input = $("cyp2d6Input");
 
-  $("predictBtn").addEventListener("click", predictPhenotype);
+  if (runBtn) runBtn.addEventListener("click", run);
+  if (resetBtn) resetBtn.addEventListener("click", reset);
+  if (predictBtn) predictBtn.addEventListener("click", predictPhenotype);
 
-  $("genoAvail").addEventListener("change", () => {
-    const v = $("genoAvail").value;
-    $("cyp2d6Input").disabled = v === "unknown";
-  });
+  if (genoAvail && cyp2d6Input) {
+    genoAvail.addEventListener("change", () => {
+      const v = genoAvail.value;
+      cyp2d6Input.disabled = v === "unknown";
+      if (v === "unknown") delete cyp2d6Input.dataset.manualCyp2d6Phenotype;
+    });
+  }
 
   initOptionalGeneUI();
   initAlleleUI();
@@ -1969,25 +2111,111 @@ function saveLastSCDAidContext(result) {
 function renderSCDAidAIResult(result) {
   saveLastSCDAidContext(result);
 
+  function escapeHtmlSafe(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
   const resultsBox = document.getElementById("results");
   const statusBox = document.getElementById("predictStatus");
 
   const functional = result.functional_phenotype;
   const analgesic = result.analgesic_recommendation;
   const safety = result.safety_risk;
+  const cypTx = result.cyp2d6_translation;
+
+  const cyp2d6EngineHTML =
+    cypTx && cypTx.cyp2d6_input_source === "alleles"
+      ? cypTx.ok
+        ? `
+      <div class="resultCard">
+        <h4>CYP2D6 — CPIC-based genotype-to-phenotype translation</h4>
+        <p><strong>Input source:</strong> ${escapeHtmlSafe(cypTx.cyp2d6_input_source || "")}</p>
+        <p><strong>Allele 1:</strong> ${escapeHtmlSafe(cypTx.allele1 || "")} &nbsp; <strong>Allele 2:</strong> ${escapeHtmlSafe(cypTx.allele2 || "")}</p>
+        <p><strong>Internally constructed diplotype:</strong> ${escapeHtmlSafe(cypTx.internally_constructed_diplotype || cypTx.diplotype || "")}</p>
+        <p><strong>Calculated activity score:</strong> ${escapeHtmlSafe(String(cypTx.calculated_activity_score ?? cypTx.activity_score ?? ""))}</p>
+        <p><strong>Calculated genetic phenotype:</strong> ${escapeHtmlSafe(cypTx.calculated_genetic_phenotype || cypTx.genetic_phenotype || "")}</p>
+        <p><strong>Selected manual phenotype:</strong> ${escapeHtmlSafe(cypTx.selected_manual_phenotype || cypTx.selected_phenotype || "—")}</p>
+        <p><strong>Inhibitor adjustment:</strong> ${escapeHtmlSafe((cypTx.inhibitor_adjustment && cypTx.inhibitor_adjustment.rule_applied) || "")}</p>
+        <p><strong>Clinical phenotype (after phenoconversion):</strong> ${escapeHtmlSafe(cypTx.clinical_phenotype_after_phenoconversion || cypTx.clinical_phenotype || "")}</p>
+        ${
+          cypTx.mismatch_warning || cypTx.phenotype_mismatch_warning
+            ? `<p class="hint"><strong>Phenotype mismatch:</strong> ${escapeHtmlSafe(cypTx.mismatch_warning || cypTx.phenotype_mismatch_warning)}</p>`
+            : ""
+        }
+        ${
+          cypTx.allele_functions && Object.keys(cypTx.allele_functions).length
+            ? `<p><strong>Allele function (per copy):</strong> ${escapeHtmlSafe(
+                Object.entries(cypTx.allele_functions)
+                  .map(([k, v]) => `${k}: ${v === null || v === undefined ? "indeterminate" : v}`)
+                  .join("; ")
+              )}</p>`
+            : ""
+        }
+        ${
+          cypTx.recommendation_notes && cypTx.recommendation_notes.length
+            ? `<div><strong>Recommendation notes</strong><ul>${cypTx.recommendation_notes
+                .map(n => `<li>${escapeHtmlSafe(n)}</li>`)
+                .join("")}</ul></div>`
+            : ""
+        }
+        ${
+          cypTx.warnings && cypTx.warnings.length
+            ? `<p class="hint"><strong>Warnings:</strong> ${cypTx.warnings.map(escapeHtmlSafe).join(" ")}</p>`
+            : ""
+        }
+      </div>
+    `
+        : `
+      <div class="resultCard">
+        <h4>CYP2D6 — Genotype translation</h4>
+        <p><strong>Input source:</strong> alleles</p>
+        <p><strong>Allele 1:</strong> ${escapeHtmlSafe(cypTx.allele1 || "—")} &nbsp; <strong>Allele 2:</strong> ${escapeHtmlSafe(cypTx.allele2 || "—")}</p>
+        <p><strong>Internally constructed diplotype:</strong> ${escapeHtmlSafe(cypTx.internally_constructed_diplotype || cypTx.diplotype || "—")}</p>
+        <p class="hint">Could not complete CPIC-based activity scoring. Using manual phenotype and request activity score for models.</p>
+        ${
+          cypTx.warnings && cypTx.warnings.length
+            ? `<p class="hint"><strong>Warnings:</strong> ${cypTx.warnings.map(escapeHtmlSafe).join(" ")}</p>`
+            : ""
+        }
+      </div>
+    `
+      : "";
 
   const explanationHTML = result.clinical_explanation
     .map(item => `<li>${item}</li>`)
     .join("");
 
-  const guardrailsHTML = result.guardrails_applied && result.guardrails_applied.length
-    ? `
-      <div class="resultCard">
-        <h4>Clinical Safety Guardrails Applied</h4>
-        <ul>${result.guardrails_applied.map(item => `<li>${item}</li>`).join("")}</ul>
+  const alertItems = [];
+  if (result.guardrails_applied && result.guardrails_applied.length) {
+    alertItems.push(...result.guardrails_applied);
+  }
+  if (cypTx && (cypTx.mismatch_warning || cypTx.phenotype_mismatch_warning)) {
+    alertItems.push(cypTx.mismatch_warning || cypTx.phenotype_mismatch_warning);
+  }
+  if (cypTx && cypTx.warnings && cypTx.warnings.length) {
+    alertItems.push(...cypTx.warnings);
+  }
+  if (safety.prediction === "high") {
+    alertItems.push(
+      "Safety risk: high — reinforce respiratory and renal monitoring per protocol."
+    );
+  }
+
+  const alertsHTML =
+    alertItems.length > 0
+      ? `
+      <div class="resultCard resultAlertStrip ${
+        safety.prediction === "high" ? "resultAlertStrip--danger" : ""
+      }">
+        <h4>Alerts & guardrails</h4>
+        <ul>${alertItems.map((item) => `<li>${escapeHtmlSafe(item)}</li>`).join("")}</ul>
       </div>
     `
-    : "";
+      : "";
 
   if (statusBox) {
     statusBox.innerHTML = `
@@ -1997,8 +2225,8 @@ function renderSCDAidAIResult(result) {
 
   if (resultsBox) {
     resultsBox.innerHTML = `
-      <div class="resultBlock">
-        <h3>SCDAid AI Full Prediction</h3>
+      <div class="resultBlock predictionOutput">
+        <h3 class="predictionSummaryTitle">SCDAid AI prediction</h3>
 
         <div class="pillRow">
           <span class="pill info">Functional phenotype: ${formatPredictionLabel(functional.prediction)}</span>
@@ -2008,46 +2236,76 @@ function renderSCDAidAIResult(result) {
           </span>
         </div>
 
-        <div class="resultCard">
-          <h4>1) Functional CYP2D6 Phenotype</h4>
-          <p><strong>Prediction:</strong> ${formatPredictionLabel(functional.prediction)}</p>
-          <p><strong>Confidence:</strong> ${formatPercent(functional.confidence)}</p>
-          <details>
-            <summary>Show probabilities</summary>
-            <ul>${buildProbabilityList(functional.probabilities)}</ul>
-          </details>
+        <div class="predictionSummaryRows">
+          <div class="predictionSummaryRow">
+            <strong>Functional CYP2D6:</strong> ${formatPredictionLabel(functional.prediction)}
+            · confidence ${formatPercent(functional.confidence)}
+          </div>
+          <div class="predictionSummaryRow">
+            <strong>Analgesic recommendation:</strong> ${formatPredictionLabel(analgesic.prediction)}
+            · confidence ${formatPercent(analgesic.confidence)}
+          </div>
+          <div class="predictionSummaryRow">
+            <strong>Safety risk:</strong> ${formatPredictionLabel(safety.prediction)}
+            · confidence ${formatPercent(safety.confidence)}
+          </div>
         </div>
 
-        <div class="resultCard">
-          <h4>2) Analgesic Recommendation</h4>
-          <p><strong>Prediction:</strong> ${formatPredictionLabel(analgesic.prediction)}</p>
-          <p><strong>Confidence:</strong> ${formatPercent(analgesic.confidence)}</p>
-          <details>
-            <summary>Show probabilities</summary>
-            <ul>${buildProbabilityList(analgesic.probabilities)}</ul>
-          </details>
-        </div>
+        ${alertsHTML}
 
-        <div class="resultCard">
-          <h4>3) Safety Risk</h4>
-          <p><strong>Prediction:</strong> ${formatPredictionLabel(safety.prediction)}</p>
-          <p><strong>Confidence:</strong> ${formatPercent(safety.confidence)}</p>
-          <details>
-            <summary>Show probabilities</summary>
-            <ul>${buildProbabilityList(safety.probabilities)}</ul>
-          </details>
-        </div>
+        <details class="predictionDetails">
+          <summary class="predictionDetailsSummary">
+            <span class="predSumClosed">Show details ▼</span>
+            <span class="predSumOpen">Hide details ▲</span>
+          </summary>
+          <div class="predictionDetailsInner">
+            ${cyp2d6EngineHTML}
 
-        <div class="resultCard">
-          <h4>Clinical Explanation</h4>
-          <ul>${explanationHTML}</ul>
-        </div>
+            <div class="resultCard">
+              <h4>1) Functional CYP2D6 Phenotype</h4>
+              <p><strong>Prediction:</strong> ${formatPredictionLabel(functional.prediction)}</p>
+              ${
+                cypTx && cypTx.ok && cypTx.cyp2d6_input_source === "alleles"
+                  ? `<p class="hint">This label reflects the <strong>clinical phenotype</strong> after phenoconversion from the CPIC-based genotype-to-phenotype translation engine, not symptom-based AI.</p>`
+                  : ""
+              }
+              <p><strong>Confidence:</strong> ${formatPercent(functional.confidence)}</p>
+              <details>
+                <summary>Show probabilities</summary>
+                <ul>${buildProbabilityList(functional.probabilities)}</ul>
+              </details>
+            </div>
 
-        ${guardrailsHTML}
+            <div class="resultCard">
+              <h4>2) Analgesic Recommendation</h4>
+              <p><strong>Prediction:</strong> ${formatPredictionLabel(analgesic.prediction)}</p>
+              <p><strong>Confidence:</strong> ${formatPercent(analgesic.confidence)}</p>
+              <details>
+                <summary>Show probabilities</summary>
+                <ul>${buildProbabilityList(analgesic.probabilities)}</ul>
+              </details>
+            </div>
 
-        <div class="note">
-          ${result.disclaimer}
-        </div>
+            <div class="resultCard">
+              <h4>3) Safety Risk</h4>
+              <p><strong>Prediction:</strong> ${formatPredictionLabel(safety.prediction)}</p>
+              <p><strong>Confidence:</strong> ${formatPercent(safety.confidence)}</p>
+              <details>
+                <summary>Show probabilities</summary>
+                <ul>${buildProbabilityList(safety.probabilities)}</ul>
+              </details>
+            </div>
+
+            <div class="resultCard">
+              <h4>Clinical explanation</h4>
+              <ul>${explanationHTML}</ul>
+            </div>
+
+            <div class="note">
+              ${escapeHtmlSafe(result.disclaimer)}
+            </div>
+          </div>
+        </details>
       </div>
     `;
   }
@@ -2068,6 +2326,17 @@ async function runThreeSCDAidModels() {
   const statusBox = document.getElementById("predictStatus");
   const resultsBox = document.getElementById("results");
   const predictButton = document.getElementById("predictBtn");
+
+  const runErrs = validate(readInputs());
+  if (runErrs.length) {
+    alert(runErrs.join("\n"));
+    if (typeof setPredictStatus === "function") {
+      setPredictStatus({ mode: "idle" });
+    } else if (statusBox) {
+      statusBox.innerHTML = `<span class="small">${TXT[lang].predictStatusIdle}</span>`;
+    }
+    return;
+  }
 
   if (predictButton) predictButton.disabled = true;
 
@@ -2093,6 +2362,10 @@ async function runThreeSCDAidModels() {
     opioid_tolerant: isChecked("opioidTol") ? "yes" : "no",
     sedatives: isChecked("sedatives") ? "yes" : "no",
     morphine_allergy: isChecked("morphineAllergy") ? "yes" : "no",
+
+    cyp2d6_allele1: getValue("cyp2d6_allele1", "").trim(),
+    cyp2d6_allele2: getValue("cyp2d6_allele2", "").trim(),
+    cyp2d6_selected_phenotype: getValue("cyp2d6Input", "EM"),
 
     cyp2d6_activity_score: getActivityScoreFromPhenotype(),
 
@@ -2287,13 +2560,17 @@ function initAskSCDAidChat() {
 // Replace old Predict Phenotype button listener
 // ======================================================
 
+function predictButtonLabel() {
+  return TXT && TXT[lang] && TXT[lang].predictBtn ? TXT[lang].predictBtn : "Predict";
+}
+
 const oldPredictBtn = document.getElementById("predictBtn");
 
 if (oldPredictBtn) {
   const newPredictBtn = oldPredictBtn.cloneNode(true);
   oldPredictBtn.parentNode.replaceChild(newPredictBtn, oldPredictBtn);
 
-  newPredictBtn.textContent = "Run SCDAid AI";
+  newPredictBtn.textContent = predictButtonLabel();
   newPredictBtn.addEventListener("click", runThreeSCDAidModels);
 }
 
@@ -2317,66 +2594,9 @@ function forceAttachSCDAidButtons() {
   const chatInput = document.getElementById("chatInput");
 
   if (aiBtn) {
-    aiBtn.textContent = "Run SCDAid AI";
+    aiBtn.textContent = predictButtonLabel();
     aiBtn.onclick = function () {
-      console.log("Run SCDAid AI clicked.");
-
-      if (typeof runThreeSCDAidModels === "function") {
-        runThreeSCDAidModels();
-      } else {
-        alert("runThreeSCDAidModels function is not found. Check app.js code.");
-      }
-    };
-  } else {
-    console.log("predictBtn not found.");
-  }
-
-  if (chatBtn) {
-    chatBtn.onclick = function () {
-      console.log("Ask SCDAid clicked.");
-
-      if (typeof askSCDAid === "function") {
-        askSCDAid();
-      } else {
-        alert("askSCDAid function is not found. Check app.js code.");
-      }
-    };
-  } else {
-    console.log("chatSendBtn not found.");
-  }
-
-  if (chatInput) {
-    chatInput.onkeydown = function (event) {
-      if (event.key === "Enter") {
-        if (typeof askSCDAid === "function") {
-          askSCDAid();
-        } else {
-          alert("askSCDAid function is not found. Check app.js code.");
-        }
-      }
-    };
-  }
-}
-
-window.addEventListener("load", forceAttachSCDAidButtons);
-setTimeout(forceAttachSCDAidButtons, 500);
-setTimeout(forceAttachSCDAidButtons, 1500);
-// ======================================================
-// FORCE ATTACH BUTTONS - FINAL FIX
-// Put this at the VERY END of app.js
-// ======================================================
-
-console.log("Final SCDAid button fixer loaded.");
-
-function forceAttachSCDAidButtons() {
-  const aiBtn = document.getElementById("predictBtn");
-  const chatBtn = document.getElementById("chatSendBtn");
-  const chatInput = document.getElementById("chatInput");
-
-  if (aiBtn) {
-    aiBtn.textContent = "Run SCDAid AI";
-    aiBtn.onclick = function () {
-      console.log("Run SCDAid AI clicked.");
+      console.log("Predict clicked.");
 
       if (typeof runThreeSCDAidModels === "function") {
         runThreeSCDAidModels();
@@ -2424,19 +2644,37 @@ setTimeout(forceAttachSCDAidButtons, 1500);
   const overlay = document.getElementById("scdChatOverlay");
   const openBtn = document.getElementById("openScdChatBtn");
   const closeBtn = document.getElementById("closeScdChatBtn");
-  const chatInput = document.getElementById("scdChatInput");
-  const chatSendBtn = document.getElementById("scdChatSendBtn");
   const chatMessages = document.getElementById("scdChatMessages");
   const quickChips = document.querySelectorAll(".scdChip");
+
+  let chatInput = document.getElementById("scdChatInput");
+  let chatSendBtn = document.getElementById("scdChatSendBtn");
 
   if (!overlay || !openBtn || !closeBtn || !chatInput || !chatSendBtn || !chatMessages) {
     console.log("SCAIA chat elements not found.");
     return;
   }
 
+  (function resetScdChatControlsToSingleHandlerSurface() {
+    const inParent = chatInput.parentNode;
+    const freshInput = chatInput.cloneNode(true);
+    inParent.replaceChild(freshInput, chatInput);
+    chatInput = freshInput;
+
+    const btnParent = chatSendBtn.parentNode;
+    const freshBtn = chatSendBtn.cloneNode(true);
+    btnParent.replaceChild(freshBtn, chatSendBtn);
+    chatSendBtn = freshBtn;
+  })();
+
+  let scdChatRequestInFlight = false;
+
   function openScdChat() {
     overlay.classList.remove("hidden");
-    setTimeout(() => chatInput.focus(), 80);
+    setTimeout(() => {
+      const el = document.getElementById("scdChatInput");
+      if (el) el.focus();
+    }, 80);
   }
 
   function closeScdChat() {
@@ -2506,7 +2744,9 @@ setTimeout(forceAttachSCDAidButtons, 1500);
   async function askScdChat() {
     const message = chatInput.value.trim();
     if (!message) return;
+    if (scdChatRequestInFlight) return;
 
+    scdChatRequestInFlight = true;
     addChatMessage("user", message);
     chatInput.value = "";
     chatSendBtn.disabled = true;
@@ -2548,9 +2788,14 @@ setTimeout(forceAttachSCDAidButtons, 1500);
       );
       console.error("SCAIA chat error:", error);
     } finally {
-      chatSendBtn.disabled = false;
-      chatSendBtn.textContent = "Ask";
-      chatInput.focus();
+      scdChatRequestInFlight = false;
+      const btn = document.getElementById("scdChatSendBtn");
+      const inp = document.getElementById("scdChatInput");
+      if (btn) {
+        btn.disabled = false;
+        btn.textContent = "Ask";
+      }
+      if (inp) inp.focus();
     }
   }
 
@@ -2567,7 +2812,10 @@ setTimeout(forceAttachSCDAidButtons, 1500);
     }
   });
 
-  chatSendBtn.addEventListener("click", askScdChat);
+  chatSendBtn.addEventListener("click", function (e) {
+    e.preventDefault();
+    askScdChat();
+  });
 
   chatInput.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
@@ -2578,8 +2826,22 @@ setTimeout(forceAttachSCDAidButtons, 1500);
 
   quickChips.forEach((chip) => {
     chip.addEventListener("click", function () {
-      chatInput.value = chip.textContent.trim();
+      const inp = document.getElementById("scdChatInput");
+      if (inp) inp.value = chip.textContent.trim();
       askScdChat();
     });
   });
 })();
+
+// Exposed for developer validation harness (validation.html). Does not alter clinical logic paths.
+window.__SCDAidValidationHooks = Object.freeze({
+  calcCYP2D6ActivityScoreFromAlleles,
+  cyp2d6PhenotypeFromAS,
+  chooseOpioid,
+  buildPlan,
+  allowNSAID,
+  canOfferOxycodone,
+  riskRenal,
+  chooseNSAIDName,
+  validate,
+});

@@ -9,6 +9,13 @@
 
 <body>
 
+  <div class="bloodFlowBackground" aria-hidden="true">
+    <div class="bloodFlowBackground__plate"></div>
+    <div class="bloodFlowBackground__base"></div>
+    <div class="bloodFlowBackground__parallax"></div>
+    <div class="bloodFlowBackground__veil"></div>
+  </div>
+
   <div class="topbar">
     <div class="brand">
       <div class="logo">SCD</div>
@@ -22,6 +29,7 @@
 
     <div class="topActions">
       <button id="backToEnzyme" class="btn ghost backBtn" type="button">Enzyme</button>
+      <a class="btn ghost" href="validation.html" title="Synthetic QA harness">Validation</a>
       <a class="btn ghost" href="learn.html">SCDAid Learn</a>
       <button id="openScdChatBtn" class="btn ghost" type="button">SCAIA</button>
       <button id="themeToggle" class="btn ghost" type="button">Light</button>
@@ -61,10 +69,53 @@
     </div>
   </section>
 
-  <main class="wrap hiddenApp" id="mainApp">
-
-    <section class="left">
-      <div class="card">
+  <main class="wrap hiddenApp" id="mainApp"><section class="inputsColumn" aria-label="Patient inputs and phenotype step">
+      <div class="card pgxReadinessCard" aria-label="PGx readiness summary — demo only">
+        <div class="pgxReadinessStrip">
+          <div class="pgxReadinessTop">
+            <span class="pgxReadinessLabel">PGx Readiness</span>
+            <span class="pgxReadinessSynthetic">Synthetic demo data only — not linked to assessment fields</span>
+          </div>
+          <div class="pgxReadinessRow">
+            <div class="pgxReadinessPick">
+              <label class="pgxReadinessFieldLabel" for="pgxDemoPatientSelect">Demo Patient ID</label>
+              <select id="pgxDemoPatientSelect" class="pgxReadinessSelect">
+                <option value="">Select demo patient…</option>
+                <option value="DEMO-001">DEMO-001</option>
+                <option value="DEMO-002">DEMO-002</option>
+                <option value="DEMO-003">DEMO-003</option>
+                <option value="DEMO-004">DEMO-004</option>
+              </select>
+            </div>
+            <div class="pgxReadinessSummary">
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">ID</span>
+                <span id="pgxSummaryPatientId" class="pgxReadinessV">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">Status</span>
+                <span id="pgxSummaryPill" class="pgxPill pgxPill--neutral">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">CYP2D6</span>
+                <span id="pgxSummaryPhenotype" class="pgxReadinessV">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">Last PGx test</span>
+                <span id="pgxSummaryTestDate" class="pgxReadinessV">—</span>
+              </div>
+            </div>
+          </div>
+          <p id="pgxSummaryNote" class="pgxReadinessNote">Choose a demo patient for a point-of-care PGx summary. Full history is in SCDAid Learn.</p>
+          <p class="pgxReadinessSaudiHint">Saudi-focused PGx context: CPIC-based interpretation with attention to alleles and copy-number variation relevant to Saudi and Arabian Peninsula populations (documentation layer; genotype is never inferred from nationality alone).</p>
+          <div class="pgxReadinessActions">
+            <a id="pgxLearnLink" class="btn ghost pgxLearnBtn" href="learn.html">View PGx History in Learn</a>
+          </div>
+        </div>
+      </div>
+      <div class="inputsTopGrid">
+        <div class="inputsTopCell">
+      <div class="card patientInputsCard">
         <div class="cardHeader">
           <h2 id="patientInputsTitle">Patient Inputs</h2>
         </div>
@@ -138,14 +189,14 @@
 
           <div class="field">
             <label for="cyp2d6_allele1">CYP2D6 allele 1</label>
-            <input id="cyp2d6_allele1" type="text" placeholder="e.g., *1" />
-            <div class="hint">Enter allele 1. Supports duplication, e.g., *1x2.</div>
+            <input id="cyp2d6_allele1" type="text" placeholder="e.g., *1 or *1x2" />
+            <div class="hint">Supports duplication, e.g., *1x2, *1x3.</div>
           </div>
 
           <div class="field">
             <label for="cyp2d6_allele2">CYP2D6 allele 2</label>
-            <input id="cyp2d6_allele2" type="text" placeholder="e.g., *10" />
-            <div class="hint">Tool will auto-calculate activity score and phenotype.</div>
+            <input id="cyp2d6_allele2" type="text" placeholder="e.g., *4 or *10" />
+            <div class="hint">Together with allele 1, the tool builds diplotype internally (e.g., *1/*4).</div>
           </div>
 
           <div class="field">
@@ -164,12 +215,14 @@
             <div class="hint">Will populate after choosing an optional gene.</div>
           </div>
         </div>
-
-        <div class="divider"></div>
-
-        <div class="box">
-          <h3 id="phenoPredTitle">Step 1: Functional CYP2D6 Phenotype Prediction</h3>
-          <div id="phenoPredHint" class="hint">
+      </div>
+        </div>
+        <div class="inputsTopCell">
+      <div class="card stepOneCard">
+        <div class="cardHeader">
+          <h2 id="phenoPredTitle">Functional CYP2D6 Phenotype Prediction</h2>
+        </div>
+          <div id="phenoPredHint" class="hint stepOneHint">
             This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made later by SCDAid using phenotype + renal + respiratory + safety inputs.
           </div>
 
@@ -348,11 +401,14 @@
           </div>
 
           <div class="row predictRow">
-            <button id="predictBtn" class="btn" type="button">Predict Phenotype</button>
+            <button id="predictBtn" class="btn" type="button">Predict</button>
             <div id="predictStatus" class="predictStatus"></div>
           </div>
+      </div>
         </div>
+      </div>
 
+      <div class="card inputsFollowCard">
         <div class="divider"></div>
 
         <div class="box infoBox">
@@ -408,20 +464,17 @@
           <li><a id="owsianyLink" target="_blank" rel="noreferrer">Owsiany et al.</a></li>
         </ul>
       </div>
-    </section>
-
-    <section class="right">
-      <div class="card">
+    </section><section class="predictionColumn resultsBelow" aria-label="Prediction output">
+      <div class="card predictionPanelCard">
         <div class="cardHeader">
           <h2 id="resultsTitle">SCDAid Decision Output</h2>
         </div>
 
-        <div id="results">
+        <div id="results" class="predictionPanelBody">
           <div id="placeholderText" class="placeholder">Enter inputs then click "Run SCDAid Recommendation".</div>
         </div>
       </div>
-    </section>
-  </main>
+    </section></main>
 
   <!-- SCAIA Popup Chat -->
   <div id="scdChatOverlay" class="scdChatOverlay hidden">
@@ -468,7 +521,64 @@
     </div>
   </div>
 
+  <script src="scdaid-demo-patients.js"></script>
   <script src="app.js"></script>
+
+  <script>
+    (function () {
+      function syncPgxSummary() {
+        var sel = document.getElementById("pgxDemoPatientSelect");
+        var link = document.getElementById("pgxLearnLink");
+        var id = sel && sel.value ? sel.value : "";
+        var p = typeof getDemoPatient === "function" ? getDemoPatient(id) : null;
+
+        document.getElementById("pgxSummaryPatientId").textContent = p ? p.id : "—";
+
+        var pill = document.getElementById("pgxSummaryPill");
+        pill.className = "pgxPill pgxPill--neutral";
+        if (!id) {
+          pill.textContent = "—";
+        } else if (!p) {
+          pill.textContent = "Profile Not Found";
+          pill.classList.add("pgxPill--notfound");
+        } else if (p.pgxStatus === "ready") {
+          pill.textContent = "PGx Ready";
+          pill.classList.add("pgxPill--ready");
+        } else if (p.pgxStatus === "missing") {
+          pill.textContent = "PGx Missing";
+          pill.classList.add("pgxPill--missing");
+        } else {
+          pill.textContent = p.pillText || "—";
+        }
+
+        document.getElementById("pgxSummaryPhenotype").textContent =
+          p && p.cyp2d6Phenotype ? p.cyp2d6Phenotype : p && p.pgxStatus === "missing" ? "Not available" : "—";
+
+        document.getElementById("pgxSummaryTestDate").textContent =
+          p && p.lastPgxTestDate ? p.lastPgxTestDate : "—";
+
+        var noteEl = document.getElementById("pgxSummaryNote");
+        if (!id) {
+          noteEl.textContent =
+            "Choose a demo patient for a point-of-care PGx summary. Full history is in SCDAid Learn.";
+        } else if (!p) {
+          noteEl.textContent = "No PGx profile found for this ID (demo registry only).";
+        } else {
+          noteEl.textContent = p.recommendationNote || "";
+        }
+
+        if (link) {
+          link.href = id && p ? "learn.html?demo=" + encodeURIComponent(id) : "learn.html";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var sel = document.getElementById("pgxDemoPatientSelect");
+        if (sel) sel.addEventListener("change", syncPgxSummary);
+        syncPgxSummary();
+      });
+    })();
+  </script>
 
   <script>
     const startBtn = document.getElementById("startBtn");
@@ -536,7 +646,7 @@
   (function () {
     function applyPredictionDecisionLabels() {
       const labels = {
-        phenoPredTitle: "Step 1: Functional CYP2D6 Phenotype Prediction",
+        phenoPredTitle: "Functional CYP2D6 Phenotype Prediction",
         phenoPredHint: "This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made by SCDAid using phenotype + renal + respiratory + safety inputs.",
         resultsTitle: "SCDAid Decision Output",
         placeholderText: "Enter patient inputs, predict phenotype if needed, then click “Run SCDAid Recommendation”."
@@ -546,9 +656,6 @@
         const el = document.getElementById(id);
         if (el) el.textContent = text;
       });
-
-      const predictBtn = document.getElementById("predictBtn");
-      if (predictBtn) predictBtn.textContent = "Predict Phenotype";
 
       const runBtn = document.getElementById("runBtn");
       if (runBtn) runBtn.textContent = "Run SCDAid Recommendation";
