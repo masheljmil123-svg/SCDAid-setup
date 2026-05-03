@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SCDAid — Developer validation</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Validation “paper” surfaces: always dark text on light panels (works in dark + light app themes). */
+    .valPage { max-width: 1280px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+    .valPage h1 { font-size: 1.35rem; margin-bottom: 0.35rem; }
+
+    .valDisclaimer {
+      margin: 1rem 0;
+      padding: 1rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid #b45309;
+      background: #fffbeb;
+      color: #78350f;
+      font-size: 0.9rem;
+      line-height: 1.5;
+    }
+    .valDisclaimer strong {
+      color: #451a03;
+    }
+
+    /* Intro paragraphs: follow page theme (dark bg default / light theme overrides below). */
+    .valMeta { color: var(--muted, #64748b); font-size: 0.88rem; margin-bottom: 0.75rem; line-height: 1.45; }
+    .valMeta code {
+      color: inherit;
+      background: rgba(255, 255, 255, 0.12);
+      padding: 0.12em 0.4em;
+      border-radius: 4px;
+      font-size: 0.92em;
+    }
+
+    .valSummary {
+      margin: 1rem 0;
+      padding: 0.85rem 1rem;
+      border-radius: 8px;
+      background: #eef2f7;
+      border: 1px solid #cbd5e1;
+      color: #0f172a;
+    }
+    .valSummary .valGate {
+      font-size: 1.05rem;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .valSummary .valGate--pass { color: #166534; }
+    .valSummary .valGate--caution { color: #a16207; }
+    .valSummary .valGate--fail { color: #b91c1c; }
+    .valSummary .valGate strong {
+      color: #0f172a;
+      font-weight: 700;
+    }
+    .valSummary .valGate--pass strong,
+    .valSummary .valGate--caution strong,
+    .valSummary .valGate--fail strong {
+      color: inherit;
+    }
+    .valGateHint {
+      font-weight: 400;
+      font-size: 0.82rem;
+      color: #334155;
+    }
+    .valSummary .valGateHint {
+      color: #475569;
+    }
+
+    .valCounts {
+      font-size: 0.9rem;
+      margin-top: 0.35rem;
+      color: #0f172a;
+    }
+    .valSummary .valCounts {
+      color: #0f172a;
+    }
+    .valSummary > .valMeta {
+      color: #334155;
+      margin-bottom: 0;
+      margin-top: 0.65rem;
+    }
+
+    .valTableWrap { overflow-x: auto; }
+    .valTable {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+      background: #ffffff;
+      color: #0f172a;
+    }
+    .valTable th,
+    .valTable td {
+      border: 1px solid #cbd5e1;
+      padding: 0.45rem 0.55rem;
+      vertical-align: top;
+      color: #0f172a;
+      background: #ffffff;
+    }
+    .valTable th {
+      text-align: left;
+      background: #e2e8f0;
+      color: #0f172a;
+      font-weight: 600;
+    }
+    .valTable td .valMeta {
+      color: #475569;
+      font-size: 0.8rem;
+      margin-top: 0.35rem;
+    }
+    .valTable td .valMeta code {
+      background: rgba(15, 23, 42, 0.06);
+      color: #0f172a;
+    }
+
+    /* Status chips: saturated hues on white/light cells */
+    .valPass { color: #166534; font-weight: 600; }
+    .valFail { color: #b91c1c; font-weight: 600; }
+    .valSkip { color: #c2410c; font-weight: 600; }
+
+    .valSevCrit { color: #991b1b; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.02em; }
+    .valSevMaj { color: #9a3412; font-weight: 700; font-size: 0.75rem; text-transform: uppercase; }
+    .valSevMin { color: #475569; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+
+    .valPre {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: ui-monospace, monospace;
+      font-size: 0.78rem;
+      margin: 0;
+      max-width: 480px;
+      color: #1e293b;
+    }
+    .valFailMsg {
+      margin-top: 0.35rem;
+      font-size: 0.8rem;
+      color: #991b1b;
+      font-weight: 600;
+    }
+
+    .valSuites { margin-top: 1.25rem; font-size: 0.88rem; line-height: 1.5; }
+    .valSuites ul { margin: 0.35rem 0 0 1.2rem; }
+
+    /* Light theme: summary/table already dark-on-light; keep intro text aligned with theme. */
+    body.lightTheme .valMeta { color: rgba(17, 24, 39, 0.75); }
+    body.lightTheme .valMeta code {
+      background: rgba(17, 24, 39, 0.08);
+      color: #0f172a;
+    }
+    body.lightTheme .valSummary {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">SCD</div>
+      <div>
+        <div class="title">SCDAid validation</div>
+        <div class="subtitle">Strict synthetic QA — expected vs actual</div>
+      </div>
+    </div>
+    <div class="topActions">
+      <a class="btn ghost" href="index.html">Main app</a>
+      <button id="valRerun" class="btn primary" type="button">Run again</button>
+    </div>
+  </div>
+
+  <div class="valPage">
+    <h1>Developer / safety-oriented validation harness</h1>
+
+    <div class="valDisclaimer" role="note">
+      <strong>Prototype validation only.</strong>
+      This page runs <em>synthetic</em> checks against the educational SCDAid prototype. It does
+      <strong>not</strong> prove clinical safety, effectiveness, or correctness for real patients.
+      Real clinical validation would require retrospective/prospective data, independent expert review,
+      and appropriate ethical and regulatory oversight.
+    </div>
+
+    <p class="valMeta">
+      <strong>Scope:</strong> Client logic is exercised via <code>app.js</code>
+      (<code>window.__SCDAidValidationHooks</code>). Additional mirrors in
+      <code>scdaid-validation.js</code> reproduce small fragments of <code>app.js</code> (e.g.
+      <code>validate</code>, <code>criticalFlags</code>) strictly for assertions — production code is not altered by this harness.
+      <strong>SCAIA</strong> rows call <code>POST /chat</code> on the current origin; use a local Flask server so results are not skipped.
+      On the main app, numeric SpO2 flows through <code>collectSpo2InputState()</code> inside <code>readInputs()</code> when <code>#spo2Input</code> is present; this harness also injects SpO2 on synthetic objects to regression-test <code>criticalFlags</code> without the full form.
+    </p>
+
+    <p class="valMeta">
+      <strong>Planned suites (~53 static + 9 chat, chat may SKIP offline):</strong>
+      (1) CYP2D6 translation &amp; uncertain alleles,
+      (2) phenoconversion,
+      (3) codeine/tramadol guardrails,
+      (4) renal tiers &amp; NSAID/opioid,
+      (5) respiratory/ACS/monitoring mirrors + documented gap,
+      (6) analgesic &amp; multimodal severe VOC,
+      (7) SCAIA /chat,
+      (8) demo PGx &amp; PHI heuristics,
+      (9) adversarial inputs &amp; mismatch documentation,
+      (10) per-test <strong>CRITICAL</strong> / <strong>MAJOR</strong> / <strong>MINOR</strong> severity and overall <strong>PASS · CAUTION · FAIL</strong> gate
+      (FAIL if any CRITICAL fails).
+    </p>
+
+    <div id="valSummary" class="valSummary" aria-live="polite"></div>
+
+    <div class="valTableWrap">
+      <table class="valTable" aria-label="Validation results">
+        <thead>
+          <tr>
+            <th>Suite</th>
+            <th>Severity</th>
+            <th>Test</th>
+            <th>Result</th>
+            <th>Expected</th>
+            <th>Actual / failure detail</th>
+          </tr>
+        </thead>
+        <tbody id="valTbody"></tbody>
+      </table>
+    </div>
+
+    <div class="valSuites">
+      <strong>CRITICAL tests</strong> (non-exhaustive — see table) include: uncertain CYP2D6 allele handling;
+      strong-inhibitor PM-like clinical phenotype with codeine/tramadol guardrail; renal high-risk opioid/NSAID routing;
+      respiratory/ACS flag mirrors; stacked high-risk silent-state guard; morphine allergy routing; demo unknown-ID / PHI heuristics;
+      SCAIA genotype-from-symptoms denial and VOC reasoning content; hallucinated genotype confirmation heuristic.
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+  <script src="scdaid-demo-patients.js"></script>
+  <script src="scdaid-validation.js"></script>
+</body>
+</html>

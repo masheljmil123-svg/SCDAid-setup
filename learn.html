@@ -55,13 +55,29 @@
       line-height: 1.5;
       display: none;
     }
+
+    /* Learn: document icon in logo square (replaces text mark) */
+    .logo--document {
+      font-size: 0;
+      letter-spacing: 0;
+    }
+
+    .logoDocIcon {
+      display: block;
+      flex-shrink: 0;
+      color: #fff;
+    }
   </style>
 </head>
 
 <body>
   <div class="topbar">
     <div class="brand">
-      <div class="logo">AI</div>
+      <div class="logo logo--document" title="Learning module" aria-hidden="true">
+        <svg class="logoDocIcon" viewBox="0 0 24 24" width="28" height="28" xmlns="http://www.w3.org/2000/svg" focusable="false">
+          <path fill="currentColor" d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm0 1.5L18.5 9H14V3.5zM6 20V4h7v7h7v9H6z"/>
+        </svg>
+      </div>
       <div>
         <div class="title">SCDAid Learn</div>
         <div class="subtitle">
@@ -72,7 +88,8 @@
 
     <div class="topActions">
       <button id="themeToggle" class="btn ghost" type="button">Light</button>
-        <a class="btn ghost" href="index.html">Back to SCDAid</a>
+      <a class="btn ghost" href="validation.html" title="Synthetic QA harness">Validation</a>
+      <a class="btn ghost" href="index.html">Back to SCDAid</a>
     </div>
   </div>
 
@@ -219,6 +236,56 @@
       </div>
     </section>
 
+    <section class="fullWidthTable learnPgxTeaching" id="learnPgxTeachingSection" aria-label="Synthetic demo PGx teaching profiles">
+      <div class="card learnPgxCard">
+        <div class="cardHeader">
+          <h2>Demo patient profiles &amp; PGx readiness</h2>
+        </div>
+        <p class="learnPgxSyntheticBanner">
+          <strong>Synthetic teaching data only.</strong> DEMO-001–DEMO-004 are fictional. No national IDs or real patient identifiers.
+        </p>
+        <p class="learnPgxSaudiFramingNote">
+          This PGx readiness walkthrough is framed for <strong>Saudi clinical PGx preparedness</strong> (panel coverage, preemptive testing, and documentation)—using <strong>synthetic</strong> demo genotypes. Real care still requires patient-specific results; CPIC-based allele-to-phenotype translation is unchanged once alleles are known.
+        </p>
+
+        <div class="learnPgxToolbar">
+          <div class="field learnPgxField">
+            <label for="learnDemoPatientSelect">Demo Patient ID</label>
+            <select id="learnDemoPatientSelect">
+              <option value="">Select demo patient…</option>
+              <option value="DEMO-001">DEMO-001</option>
+              <option value="DEMO-002">DEMO-002</option>
+              <option value="DEMO-003">DEMO-003</option>
+              <option value="DEMO-004">DEMO-004</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="learnPgxDetailMount" class="learnPgxDetailMount">
+          <p class="learnPgxPlaceholder">Select a demo patient to load PGx readiness, history, and teaching notes.</p>
+        </div>
+
+        <div class="learnPgxLongitudinalWrap">
+          <details class="learnPgxLongitudinalAccordion" id="learnLongitudinalAccordion">
+            <summary class="learnPgxLongitudinalSummary">
+              Longitudinal PGx visit comparison <span class="learnPgxLongitudinalSummaryHint">(same synthetic demo patient)</span>
+            </summary>
+            <div class="learnPgxLongitudinalBody">
+              <p class="learnPgxLongitudinalBanner">
+                <strong>Synthetic teaching visits only.</strong> Each column is a fictional encounter for the <em>same</em> demo ID — not different real patients.
+              </p>
+              <p class="learnPgxLongitudinalTeaching" id="learnLongitudinalTeachingNote">
+                CYP2D6 genotype is generally stable across visits, but the clinical phenotype and analgesic recommendation may change because of inhibitors, renal function, respiratory status, and prior response.
+              </p>
+              <div id="learnLongitudinalMount" class="learnLongitudinalMount">
+                <p class="learnPgxHint">Select a demo patient above to load a visit-by-visit table.</p>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
     <section class="fullWidthTable">
       <div class="card">
         <div class="cardHeader">
@@ -232,6 +299,7 @@
     </section>
   </main>
 
+  <script src="scdaid-demo-patients.js"></script>
   <script>
     const API_BASE = "https://scdaid-api.onrender.com";
 
@@ -620,6 +688,190 @@
       `;
     }
 
+    function learnEscapeHtml(s) {
+      if (s == null || s === "") return "";
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    function renderLearnDemoDetail(patientId) {
+      const mount = document.getElementById("learnPgxDetailMount");
+      if (!mount) return;
+
+      const p = typeof getDemoPatient === "function" ? getDemoPatient(patientId) : null;
+      if (!patientId || !p) {
+        mount.innerHTML =
+          '<p class="learnPgxPlaceholder">Select a demo patient to load PGx readiness, history, and teaching notes.</p>';
+        renderLongitudinalVisits(null);
+        return;
+      }
+
+      const pillClass =
+        p.pgxStatus === "ready" ? "pgxPill--ready" : p.pgxStatus === "missing" ? "pgxPill--missing" : "pgxPill--neutral";
+
+      const vocRows = (p.vocEpisodes || [])
+        .map(
+          (e) =>
+            `<tr><td>${learnEscapeHtml(e.date)}</td><td>${learnEscapeHtml(e.label)}</td><td>${learnEscapeHtml(e.detail)}</td></tr>`
+        )
+        .join("");
+      const opRows = (p.opioidResponse || [])
+        .map(
+          (e) =>
+            `<tr><td>${learnEscapeHtml(e.agent)}</td><td>${learnEscapeHtml(e.response)}</td><td>${learnEscapeHtml(e.notes)}</td></tr>`
+        )
+        .join("");
+      const toxRows = (p.toxicityHistory || [])
+        .map(
+          (e) =>
+            `<tr><td>${learnEscapeHtml(e.date)}</td><td>${learnEscapeHtml(e.event)}</td><td>${learnEscapeHtml(e.severity)}</td><td>${learnEscapeHtml(e.context)}</td></tr>`
+        )
+        .join("");
+      const gtRows = (p.genotypeTimeline || [])
+        .map(
+          (e) =>
+            `<tr><td>${learnEscapeHtml(e.date)}</td><td>${learnEscapeHtml(e.label)}</td><td>${learnEscapeHtml(e.detail)}</td></tr>`
+        )
+        .join("");
+
+      const emptyRow = '<tr><td colspan="3" class="learnPgxEmpty">No rows (demo).</td></tr>';
+
+      mount.innerHTML = `
+        <div class="learnPgxDetailGrid">
+          <div class="learnPgxPanel">
+            <h3 class="learnPgxSubhead">PGx readiness</h3>
+            <p class="learnPgxPillRow"><span class="pgxPill ${pillClass}">${learnEscapeHtml(p.pillText)}</span></p>
+            <table class="learnPgxTable">
+              <tbody>
+                <tr><th>Demo ID</th><td>${learnEscapeHtml(p.id)}</td></tr>
+                <tr><th>Initials</th><td>${learnEscapeHtml(p.initials)}</td></tr>
+                <tr><th>Age / sex / weight</th><td>${learnEscapeHtml(String(p.age))} y, ${learnEscapeHtml(p.sex)}, ${learnEscapeHtml(String(p.weightKg))} kg (synthetic)</td></tr>
+                <tr><th>Diplotype</th><td>${learnEscapeHtml(p.diplotype || "—")}</td></tr>
+                <tr><th>Allele 1 / 2</th><td>${learnEscapeHtml(p.allele1 || "—")} / ${learnEscapeHtml(p.allele2 || "—")}</td></tr>
+                <tr><th>CYP2D6 phenotype</th><td>${learnEscapeHtml(p.cyp2d6Phenotype || "—")}</td></tr>
+                <tr><th>Activity score (illustrative)</th><td>${learnEscapeHtml(p.activityScore || "—")}</td></tr>
+                <tr><th>Last PGx test</th><td>${learnEscapeHtml(p.lastPgxTestDate || "—")}</td></tr>
+              </tbody>
+            </table>
+            <p class="learnPgxReco">${learnEscapeHtml(p.recommendationNote)}</p>
+          </div>
+          <div class="learnPgxPanel">
+            <h3 class="learnPgxSubhead">Prior VOC episodes (demo)</h3>
+            <table class="learnPgxTable learnPgxTableWide">
+              <thead><tr><th>Date</th><th>Type</th><th>Notes</th></tr></thead>
+              <tbody>${vocRows || emptyRow}</tbody>
+            </table>
+            <h3 class="learnPgxSubhead">Opioid response (demo)</h3>
+            <table class="learnPgxTable learnPgxTableWide">
+              <thead><tr><th>Agent</th><th>Response</th><th>Notes</th></tr></thead>
+              <tbody>${opRows || emptyRow}</tbody>
+            </table>
+            <h3 class="learnPgxSubhead">Toxicity history (demo)</h3>
+            <table class="learnPgxTable learnPgxTableWide">
+              <thead><tr><th>Date</th><th>Event</th><th>Severity</th><th>Context</th></tr></thead>
+              <tbody>${toxRows || '<tr><td colspan="4" class="learnPgxEmpty">No toxicity rows (demo).</td></tr>'}</tbody>
+            </table>
+          </div>
+          <div class="learnPgxPanel learnPgxPanelFull">
+            <h3 class="learnPgxSubhead">Genotype / phenotype timeline (demo)</h3>
+            <table class="learnPgxTable learnPgxTableWide">
+              <thead><tr><th>Date</th><th>Event</th><th>Detail</th></tr></thead>
+              <tbody>${gtRows || emptyRow}</tbody>
+            </table>
+            <h3 class="learnPgxSubhead">Teaching note</h3>
+            <p class="learnPgxTeaching">${learnEscapeHtml(p.teachingBlurb)}</p>
+          </div>
+        </div>
+      `;
+
+      renderLongitudinalVisits(p);
+    }
+
+    function renderLongitudinalVisits(p) {
+      const mount = document.getElementById("learnLongitudinalMount");
+      const acc = document.getElementById("learnLongitudinalAccordion");
+      if (!mount) return;
+
+      const visits = (p && p.longitudinalVisits) || [];
+      if (!p || !visits.length) {
+        mount.innerHTML =
+          '<p class="learnPgxHint">No multi-visit synthetic timeline for this selection. Choose DEMO-001–DEMO-004.</p>';
+        if (acc) acc.open = false;
+        return;
+      }
+
+      if (acc) acc.open = true;
+
+      const rowDefs = [
+        { key: "visitDate", label: "Visit date" },
+        { key: "vocSeverity", label: "VOC severity" },
+        { key: "egfr", label: "eGFR" },
+        { key: "spo2", label: "SpO₂" },
+        { key: "diplotype", label: "CYP2D6 genotype / diplotype" },
+        { key: "geneticPhenotype", label: "Genetic phenotype" },
+        { key: "inhibitorMedication", label: "CYP2D6 inhibitor medication" },
+        { key: "clinicalPhenotypePhenoconversion", label: "Clinical phenotype (after phenoconversion)" },
+        { key: "opioidUsedOrConsidered", label: "Opioid used or considered" },
+        { key: "response", label: "Response" },
+        { key: "toxicitySafety", label: "Toxicity / safety" },
+        { key: "scdaidRecommendationNote", label: "SCDAid recommendation note (teaching)" },
+      ];
+
+      const headCells = visits
+        .map(
+          (v) =>
+            `<th scope="col" class="learnLongitudinalColHead">${learnEscapeHtml(v.visitTitle)}<br><span class="learnLongitudinalDate">${learnEscapeHtml(v.visitDate)}</span></th>`
+        )
+        .join("");
+
+      const bodyRows = rowDefs
+        .map((def) => {
+          const cells = visits
+            .map((v) => `<td>${learnEscapeHtml(v[def.key] != null ? v[def.key] : "—")}</td>`)
+            .join("");
+          return `<tr><th scope="row">${learnEscapeHtml(def.label)}</th>${cells}</tr>`;
+        })
+        .join("");
+
+      mount.innerHTML = `
+        <p class="learnPgxHint learnLongitudinalPatientTag">Same synthetic patient: <strong>${learnEscapeHtml(p.id)}</strong> (${learnEscapeHtml(p.initials)}) — demo only.</p>
+        <div class="learnLongitudinalTableScroll">
+          <table class="learnPgxTable learnLongitudinalVisitTable">
+            <thead>
+              <tr>
+                <th scope="col" class="learnLongitudinalCorner">Metric</th>
+                ${headCells}
+              </tr>
+            </thead>
+            <tbody>${bodyRows}</tbody>
+          </table>
+        </div>
+      `;
+    }
+
+    function initLearnDemoPgxUi() {
+      const sel = document.getElementById("learnDemoPatientSelect");
+      if (sel) {
+        sel.addEventListener("change", function () {
+          renderLearnDemoDetail(sel.value);
+        });
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      const demo = (params.get("demo") || "").trim().toUpperCase();
+      if (demo && typeof getDemoPatient === "function" && getDemoPatient(demo)) {
+        if (sel) sel.value = demo;
+        renderLearnDemoDetail(demo);
+        requestAnimationFrame(function () {
+          document.getElementById("learnPgxTeachingSection")?.scrollIntoView({ behavior: "smooth", block: "start" });
+        });
+      }
+    }
+
+    initLearnDemoPgxUi();
     renderCases();
   </script>
 

@@ -5,11 +5,16 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>SCDAid</title>
   <link rel="stylesheet" href="style.css" />
-<link rel="stylesheet" href="scaia-clean-fix.css">
-<link rel="stylesheet" href="scaia-lab-window.css">
 </head>
 
 <body>
+
+  <div class="bloodFlowBackground" aria-hidden="true">
+    <div class="bloodFlowBackground__plate"></div>
+    <div class="bloodFlowBackground__base"></div>
+    <div class="bloodFlowBackground__parallax"></div>
+    <div class="bloodFlowBackground__veil"></div>
+  </div>
 
   <div class="topbar">
     <div class="brand">
@@ -24,6 +29,7 @@
 
     <div class="topActions">
       <button id="backToEnzyme" class="btn ghost backBtn" type="button">Enzyme</button>
+      <a class="btn ghost" href="validation.html" title="Synthetic QA harness">Validation</a>
       <a class="btn ghost" href="learn.html">SCDAid Learn</a>
       <button id="openScdChatBtn" class="btn ghost" type="button">SCAIA</button>
       <button id="themeToggle" class="btn ghost" type="button">Light</button>
@@ -63,10 +69,53 @@
     </div>
   </section>
 
-  <main class="wrap hiddenApp" id="mainApp">
-
-    <section class="left">
-      <div class="card">
+  <main class="wrap hiddenApp" id="mainApp"><section class="inputsColumn" aria-label="Patient inputs and phenotype step">
+      <div class="card pgxReadinessCard" aria-label="PGx readiness summary — demo only">
+        <div class="pgxReadinessStrip">
+          <div class="pgxReadinessTop">
+            <span class="pgxReadinessLabel">PGx Readiness</span>
+            <span class="pgxReadinessSynthetic">Synthetic demo data only — not linked to assessment fields</span>
+          </div>
+          <div class="pgxReadinessRow">
+            <div class="pgxReadinessPick">
+              <label class="pgxReadinessFieldLabel" for="pgxDemoPatientSelect">Demo Patient ID</label>
+              <select id="pgxDemoPatientSelect" class="pgxReadinessSelect">
+                <option value="">Select demo patient…</option>
+                <option value="DEMO-001">DEMO-001</option>
+                <option value="DEMO-002">DEMO-002</option>
+                <option value="DEMO-003">DEMO-003</option>
+                <option value="DEMO-004">DEMO-004</option>
+              </select>
+            </div>
+            <div class="pgxReadinessSummary">
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">ID</span>
+                <span id="pgxSummaryPatientId" class="pgxReadinessV">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">Status</span>
+                <span id="pgxSummaryPill" class="pgxPill pgxPill--neutral">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">CYP2D6</span>
+                <span id="pgxSummaryPhenotype" class="pgxReadinessV">—</span>
+              </div>
+              <div class="pgxReadinessMeta">
+                <span class="pgxReadinessK">Last PGx test</span>
+                <span id="pgxSummaryTestDate" class="pgxReadinessV">—</span>
+              </div>
+            </div>
+          </div>
+          <p id="pgxSummaryNote" class="pgxReadinessNote">Choose a demo patient for a point-of-care PGx summary. Full history is in SCDAid Learn.</p>
+          <p class="pgxReadinessSaudiHint">Saudi-focused PGx context: CPIC-based interpretation with attention to alleles and copy-number variation relevant to Saudi and Arabian Peninsula populations (documentation layer; genotype is never inferred from nationality alone).</p>
+          <div class="pgxReadinessActions">
+            <a id="pgxLearnLink" class="btn ghost pgxLearnBtn" href="learn.html">View PGx History in Learn</a>
+          </div>
+        </div>
+      </div>
+      <div class="inputsTopGrid">
+        <div class="inputsTopCell">
+      <div class="card patientInputsCard">
         <div class="cardHeader">
           <h2 id="patientInputsTitle">Patient Inputs</h2>
         </div>
@@ -140,14 +189,14 @@
 
           <div class="field">
             <label for="cyp2d6_allele1">CYP2D6 allele 1</label>
-            <input id="cyp2d6_allele1" type="text" placeholder="e.g., *1" />
-            <div class="hint">Enter allele 1. Supports duplication, e.g., *1x2.</div>
+            <input id="cyp2d6_allele1" type="text" placeholder="e.g., *1 or *1x2" />
+            <div class="hint">Supports duplication, e.g., *1x2, *1x3.</div>
           </div>
 
           <div class="field">
             <label for="cyp2d6_allele2">CYP2D6 allele 2</label>
-            <input id="cyp2d6_allele2" type="text" placeholder="e.g., *10" />
-            <div class="hint">Tool will auto-calculate activity score and phenotype.</div>
+            <input id="cyp2d6_allele2" type="text" placeholder="e.g., *4 or *10" />
+            <div class="hint">Together with allele 1, the tool builds diplotype internally (e.g., *1/*4).</div>
           </div>
 
           <div class="field">
@@ -166,12 +215,14 @@
             <div class="hint">Will populate after choosing an optional gene.</div>
           </div>
         </div>
-
-        <div class="divider"></div>
-
-        <div class="box">
-          <h3 id="phenoPredTitle">Step 1: Functional CYP2D6 Phenotype Prediction</h3>
-          <div id="phenoPredHint" class="hint">
+      </div>
+        </div>
+        <div class="inputsTopCell">
+      <div class="card stepOneCard">
+        <div class="cardHeader">
+          <h2 id="phenoPredTitle">Functional CYP2D6 Phenotype Prediction</h2>
+        </div>
+          <div id="phenoPredHint" class="hint stepOneHint">
             This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made later by SCDAid using phenotype + renal + respiratory + safety inputs.
           </div>
 
@@ -350,11 +401,14 @@
           </div>
 
           <div class="row predictRow">
-            <button id="predictBtn" class="btn" type="button">Predict Phenotype</button>
+            <button id="predictBtn" class="btn" type="button">Predict</button>
             <div id="predictStatus" class="predictStatus"></div>
           </div>
+      </div>
         </div>
+      </div>
 
+      <div class="card inputsFollowCard">
         <div class="divider"></div>
 
         <div class="box infoBox">
@@ -410,20 +464,17 @@
           <li><a id="owsianyLink" target="_blank" rel="noreferrer">Owsiany et al.</a></li>
         </ul>
       </div>
-    </section>
-
-    <section class="right">
-      <div class="card">
+    </section><section class="predictionColumn resultsBelow" aria-label="Prediction output">
+      <div class="card predictionPanelCard">
         <div class="cardHeader">
           <h2 id="resultsTitle">SCDAid Decision Output</h2>
         </div>
 
-        <div id="results">
+        <div id="results" class="predictionPanelBody">
           <div id="placeholderText" class="placeholder">Enter inputs then click "Run SCDAid Recommendation".</div>
         </div>
       </div>
-    </section>
-  </main>
+    </section></main>
 
   <!-- SCAIA Popup Chat -->
   <div id="scdChatOverlay" class="scdChatOverlay hidden">
@@ -455,80 +506,6 @@
         </div>
       </div>
 
-      
-<div class="scaiaGelAssist">
-  <div class="scaiaGelTitle">DNA Gel Image Assist</div>
-  <div class="scaiaGelHint">
-    Upload a gel electrophoresis image. SCAIA will estimate lane bands using the DNA ladder. Educational mode only.
-  </div>
-
-  <div class="scaiaGelGrid">
-    <input id="gelImageInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" />
-
-    <input id="gelLadderLaneInput" type="number" min="1" value="1" placeholder="Ladder lane e.g., 1" />
-
-    <input id="gelLadderSizesInput" type="text" value="1500,1000,700,500,300,200,100" placeholder="Ladder sizes bp, largest to smallest" />
-
-    <input id="gelTargetSizeInput" type="number" min="1" placeholder="Expected target size bp optional" />
-  </div>
-
-  <button id="analyzeGelBtn" class="btn ghost" type="button">Analyze Gel Image</button>
-</div>
-
-
-      
-<div class="scaiaAssayInterpreter">
-  <div class="scaiaAssayTitle">SCAIA PGx Lab Result Interpreter</div>
-  <div class="scaiaAssayHint">
-    Upload a molecular assay image. SCAIA can give a preliminary educational interpretation for gel, Sanger, qPCR, allelic discrimination, HRM, CNV, or NGS result screenshots.
-  </div>
-
-  <div class="scaiaAssayGrid">
-    <select id="assayTypeSelect">
-      <option value="auto">Auto-detect result type</option>
-      <option value="gel">Gel electrophoresis</option>
-      <option value="sanger">Sanger chromatogram</option>
-      <option value="qpcr">qPCR amplification curve</option>
-      <option value="allelic_discrimination">Allelic discrimination plot</option>
-      <option value="hrm">HRM / melt curve</option>
-      <option value="cnv">Copy number / CNV plot</option>
-      <option value="ngs_table">NGS variant table screenshot</option>
-      <option value="other">Other molecular assay image</option>
-    </select>
-
-    <input id="assayFileInput" type="file" accept="image/png,image/jpeg,image/jpg,image/webp" />
-
-    <input id="assayGeneInput" type="text" placeholder="Gene target optional, e.g., CYP2D6" />
-
-    <input id="assayVariantInput" type="text" placeholder="Variant/allele optional, e.g., *4 or rs3892097" />
-
-    <input id="assayExpectedInput" type="text" placeholder="Expected result optional, e.g., 800 bp / WT cluster" />
-
-    <input id="assayNotesInput" type="text" placeholder="Notes optional, e.g., ladder lane, controls, sample lane" />
-  </div>
-
-  <button id="analyzeAssayBtn" class="btn ghost" type="button">Analyze PGx Lab Image</button>
-</div>
-
-
-      
-<div class="scaiaLabLauncher" id="scaiaLabLauncher">
-  <div class="scaiaLabLauncherTitle">SCAIA Lab Analysis</div>
-  <div class="scaiaLabLauncherHint">
-    Ask SCAIA what you want to analyze, or choose one option. The required fields will appear only when needed.
-  </div>
-  <div class="scaiaLabButtons">
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="gel">Gel image</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="sanger">Sanger</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="qpcr">qPCR</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="allelic_discrimination">Allelic plot</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="hrm">HRM</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="cnv">CNV</button>
-    <button class="scaiaLabMiniBtn" type="button" data-lab-tool="ngs_table">NGS table</button>
-  </div>
-</div>
-
-
       <div class="scdChatInputRow">
         <input
           id="scdChatInput"
@@ -544,7 +521,64 @@
     </div>
   </div>
 
+  <script src="scdaid-demo-patients.js"></script>
   <script src="app.js"></script>
+
+  <script>
+    (function () {
+      function syncPgxSummary() {
+        var sel = document.getElementById("pgxDemoPatientSelect");
+        var link = document.getElementById("pgxLearnLink");
+        var id = sel && sel.value ? sel.value : "";
+        var p = typeof getDemoPatient === "function" ? getDemoPatient(id) : null;
+
+        document.getElementById("pgxSummaryPatientId").textContent = p ? p.id : "—";
+
+        var pill = document.getElementById("pgxSummaryPill");
+        pill.className = "pgxPill pgxPill--neutral";
+        if (!id) {
+          pill.textContent = "—";
+        } else if (!p) {
+          pill.textContent = "Profile Not Found";
+          pill.classList.add("pgxPill--notfound");
+        } else if (p.pgxStatus === "ready") {
+          pill.textContent = "PGx Ready";
+          pill.classList.add("pgxPill--ready");
+        } else if (p.pgxStatus === "missing") {
+          pill.textContent = "PGx Missing";
+          pill.classList.add("pgxPill--missing");
+        } else {
+          pill.textContent = p.pillText || "—";
+        }
+
+        document.getElementById("pgxSummaryPhenotype").textContent =
+          p && p.cyp2d6Phenotype ? p.cyp2d6Phenotype : p && p.pgxStatus === "missing" ? "Not available" : "—";
+
+        document.getElementById("pgxSummaryTestDate").textContent =
+          p && p.lastPgxTestDate ? p.lastPgxTestDate : "—";
+
+        var noteEl = document.getElementById("pgxSummaryNote");
+        if (!id) {
+          noteEl.textContent =
+            "Choose a demo patient for a point-of-care PGx summary. Full history is in SCDAid Learn.";
+        } else if (!p) {
+          noteEl.textContent = "No PGx profile found for this ID (demo registry only).";
+        } else {
+          noteEl.textContent = p.recommendationNote || "";
+        }
+
+        if (link) {
+          link.href = id && p ? "learn.html?demo=" + encodeURIComponent(id) : "learn.html";
+        }
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        var sel = document.getElementById("pgxDemoPatientSelect");
+        if (sel) sel.addEventListener("change", syncPgxSummary);
+        syncPgxSummary();
+      });
+    })();
+  </script>
 
   <script>
     const startBtn = document.getElementById("startBtn");
@@ -579,178 +613,6 @@
     });
   </script>
 
-  <script>
-    /* SCAIA popup chat */
-    (function () {
-      const overlay = document.getElementById("scdChatOverlay");
-      const openBtn = document.getElementById("openScdChatBtn");
-      const closeBtn = document.getElementById("closeScdChatBtn");
-      const chatInput = document.getElementById("scdChatInput");
-      const chatSendBtn = document.getElementById("scdChatSendBtn");
-      const chatMessages = document.getElementById("scdChatMessages");
-      const quickChips = document.querySelectorAll(".scdChip");
-
-      if (!overlay || !openBtn || !closeBtn || !chatInput || !chatSendBtn || !chatMessages) {
-        console.log("Top SCAIA chat elements not found.");
-        return;
-      }
-
-      function openScdChat() {
-        overlay.classList.remove("hidden");
-        setTimeout(() => chatInput.focus(), 80);
-      }
-
-      function closeScdChat() {
-        overlay.classList.add("hidden");
-      }
-
-      function escapeHtml(str) {
-        return String(str)
-          .replace(/&/g, "&amp;")
-          .replace(/</g, "&lt;")
-          .replace(/>/g, "&gt;");
-      }
-
-      function isArabicText(text) {
-        return /[\u0600-\u06FF]/.test(String(text));
-      }
-
-      function addChatMessage(role, text) {
-        const wrapper = document.createElement("div");
-        wrapper.className = `scdMsg ${role}`;
-
-        const bubble = document.createElement("div");
-        const langClass = isArabicText(text) ? "rtlText" : "ltrText";
-
-        bubble.className = `scdBubble ${langClass}`;
-        bubble.setAttribute("dir", isArabicText(text) ? "rtl" : "ltr");
-        bubble.innerHTML = escapeHtml(text);
-
-        wrapper.appendChild(bubble);
-        chatMessages.appendChild(wrapper);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-
-      function getValue(id) {
-        const el = document.getElementById(id);
-        if (!el) return "";
-        if (el.type === "checkbox") return el.checked ? "yes" : "no";
-        return el.value || "";
-      }
-
-      function collectScdContext() {
-        return {
-          patient_summary: {
-            age: getValue("ageInput"),
-            weight_kg: getValue("weightInput"),
-            egfr: getValue("gfrInput"),
-            pain_severity: getValue("severityInput"),
-            spo2: getValue("spo2Input"),
-            cyp2d6_phenotype: getValue("cyp2d6Input"),
-            cyp2d6_inhibitor_drug: getValue("cyp2d6InhibitorDrugInput"),
-            cyp2d6_inhibitor_strength: getValue("inhibitorLevelInput"),
-            prior_codeine_response: getValue("codeineRespInput"),
-            prior_tramadol_response: getValue("tramadolRespInput"),
-            inflammation_type: getValue("inflammationTypeInput"),
-            inflammation_severity: getValue("inflammationInput"),
-            previous_opioid_toxicity: getValue("opioidToxicityInput"),
-            opioid_toxicity_type: getValue("opioidToxicityTypeInput"),
-            morphine_allergy: getValue("morphineAllergy"),
-            suspected_acs: getValue("suspectedACS"),
-            respiratory_risk: getValue("respRisk"),
-            sedatives: getValue("sedatives")
-          },
-          last_result: window.lastSCDAidContext || {}
-        };
-      }
-
-      async function askScdChat() {
-        const message = chatInput.value.trim();
-        if (!message) return;
-
-        addChatMessage("user", message);
-        chatInput.value = "";
-        chatSendBtn.disabled = true;
-        chatSendBtn.textContent = "Thinking...";
-
-        try {
-          const response = await fetch("/chat", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-              question: message,
-              message: message,
-              context: collectScdContext(),
-              chat_history: Array.from(document.querySelectorAll(".scdMsg .scdBubble"))
-                .slice(-8)
-                .map((bubble) => bubble.innerText)
-            })
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            throw new Error(data.error || "Chat request failed.");
-          }
-
-          const answer =
-            data.answer ||
-            data.response ||
-            data.message ||
-            "No response returned from SCDAid.";
-
-          addChatMessage("bot", answer);
-        } catch (error) {
-          addChatMessage(
-            "bot",
-            "Sorry, SCAIA is not responding correctly right now. Please check the /chat endpoint in app.py."
-          );
-          console.error("SCAIA chat error:", error);
-        } finally {
-          chatSendBtn.disabled = false;
-          chatSendBtn.textContent = "Ask";
-          chatInput.focus();
-        }
-      }
-
-      openBtn.addEventListener("click", openScdChat);
-      closeBtn.addEventListener("click", closeScdChat);
-
-      overlay.addEventListener("click", function (event) {
-        if (event.target === overlay) {
-          closeScdChat();
-        }
-      });
-
-      document.addEventListener("keydown", function (event) {
-        if (event.key === "Escape") {
-          closeScdChat();
-        }
-      });
-
-      chatSendBtn.addEventListener("click", askScdChat);
-
-      chatInput.addEventListener("keydown", function (event) {
-        if (event.key === "Enter") {
-          event.preventDefault();
-          askScdChat();
-        }
-      });
-
-      quickChips.forEach((chip) => {
-        chip.addEventListener("click", function () {
-          chatInput.value = chip.textContent.trim();
-          askScdChat();
-        });
-      });
-
-      console.log("Top SCAIA popup loaded.");
-    })();
-  </script>
-
-
 <script>
   // Light / Dark mode toggle
   (function () {
@@ -779,33 +641,12 @@
   })();
 </script>
 
-
 <script>
-  // Strong scroll fix after choosing enzyme pathway
-  (function () {
-    const startBtn = document.getElementById("startBtn");
-    const heroIntro = document.getElementById("heroIntro");
-    const mainApp = document.getElementById("mainApp");
-
-    if (!startBtn || !heroIntro || !mainApp) return;
-
-    startBtn.addEventListener("click", function () {
-      setTimeout(function () {
-        heroIntro.classList.add("compactHero");
-        mainApp.classList.remove("hiddenApp");
-        mainApp.scrollIntoView({ behavior: "smooth", block: "start" });
-      }, 350);
-    });
-  })();
-</script>
-
-
-<script>
-  // Force correct Prediction vs Decision labels
+  // Prediction vs Decision labels (single pass + late paint from app.js)
   (function () {
     function applyPredictionDecisionLabels() {
       const labels = {
-        phenoPredTitle: "Step 1: Functional CYP2D6 Phenotype Prediction",
+        phenoPredTitle: "Functional CYP2D6 Phenotype Prediction",
         phenoPredHint: "This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made by SCDAid using phenotype + renal + respiratory + safety inputs.",
         resultsTitle: "SCDAid Decision Output",
         placeholderText: "Enter patient inputs, predict phenotype if needed, then click “Run SCDAid Recommendation”."
@@ -816,663 +657,17 @@
         if (el) el.textContent = text;
       });
 
-      const predictBtn = document.getElementById("predictBtn");
-      if (predictBtn) predictBtn.textContent = "Predict Phenotype";
-
       const runBtn = document.getElementById("runBtn");
       if (runBtn) runBtn.textContent = "Run SCDAid Recommendation";
 
-      const status = document.getElementById("predictStatus");
-      if (status && status.textContent.includes("API-based")) {
-        status.textContent = "Functional phenotype prediction only.";
-      }
+      const predictStatus = document.getElementById("predictStatus");
+      if (predictStatus) predictStatus.textContent = "Functional phenotype prediction only.";
     }
 
     document.addEventListener("DOMContentLoaded", applyPredictionDecisionLabels);
     window.addEventListener("load", applyPredictionDecisionLabels);
-    setTimeout(applyPredictionDecisionLabels, 300);
-    setTimeout(applyPredictionDecisionLabels, 1000);
   })();
 </script>
-
-
-<script>
-  // Strong force labels for Prediction vs Decision
-  (function () {
-    function forceLabels() {
-      const phenoTitle = document.getElementById("phenoPredTitle");
-      if (phenoTitle) phenoTitle.textContent = "Step 1: Functional CYP2D6 Phenotype Prediction";
-
-      const phenoHint = document.getElementById("phenoPredHint");
-      if (phenoHint) phenoHint.textContent = "This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made by SCDAid using phenotype + renal + respiratory + safety inputs.";
-
-      const predictBtn = document.getElementById("predictBtn");
-      if (predictBtn) predictBtn.textContent = "Predict Phenotype";
-
-      const predictStatus = document.getElementById("predictStatus");
-      if (predictStatus) predictStatus.textContent = "Functional phenotype prediction only.";
-
-      const runBtn = document.getElementById("runBtn");
-      if (runBtn) runBtn.textContent = "Run SCDAid Recommendation";
-
-      const resultsTitle = document.getElementById("resultsTitle");
-      if (resultsTitle) resultsTitle.textContent = "SCDAid Decision Output";
-
-      const placeholder = document.getElementById("placeholderText");
-      if (placeholder) placeholder.textContent = "Enter patient inputs, predict phenotype if needed, then click “Run SCDAid Recommendation”.";
-    }
-
-    document.addEventListener("DOMContentLoaded", forceLabels);
-    window.addEventListener("load", forceLabels);
-
-    let count = 0;
-    const timer = setInterval(function () {
-      forceLabels();
-      count++;
-      if (count >= 10) clearInterval(timer);
-    }, 500);
-  })();
-</script>
-
-
-<script>
-  // SCAIA typing/loading indicator
-  (function () {
-    let activeTypingBubble = null;
-
-    function getChatMessagesBox() {
-      return document.getElementById("chatMessages") ||
-             document.getElementById("scdChatMessages") ||
-             document.querySelector(".scdChatMessages") ||
-             document.querySelector("#chatBody");
-    }
-
-    function isArabicText(text) {
-      return /[\u0600-\u06FF]/.test(String(text));
-    }
-
-    function showSCAIATyping() {
-      const chatBox = getChatMessagesBox();
-      if (!chatBox || activeTypingBubble) return;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "scdMsg bot scaiaTypingMsg";
-
-      const bubble = document.createElement("div");
-      bubble.className = "scdBubble ltrText";
-      bubble.setAttribute("dir", "ltr");
-      bubble.innerHTML = `
-        <span>SCAIA is typing</span>
-        <span class="scaiaTypingDots">
-          <span></span><span></span><span></span>
-        </span>
-      `;
-
-      wrapper.appendChild(bubble);
-      chatBox.appendChild(wrapper);
-      chatBox.scrollTop = chatBox.scrollHeight;
-
-      activeTypingBubble = wrapper;
-    }
-
-    function hideSCAIATyping() {
-      if (activeTypingBubble && activeTypingBubble.parentNode) {
-        activeTypingBubble.parentNode.removeChild(activeTypingBubble);
-      }
-      activeTypingBubble = null;
-    }
-
-    const originalFetch = window.fetch;
-
-    window.fetch = async function (...args) {
-      const url = String(args[0] || "");
-
-      const isSCAIAChat =
-        url.includes("/chat") ||
-        url.endsWith("chat") ||
-        url.includes("chat?");
-
-      if (isSCAIAChat) {
-        showSCAIATyping();
-      }
-
-      try {
-        const response = await originalFetch.apply(this, args);
-        return response;
-      } finally {
-        if (isSCAIAChat) {
-          setTimeout(hideSCAIATyping, 250);
-        }
-      }
-    };
-
-    window.addEventListener("error", hideSCAIATyping);
-  })();
-</script>
-
-
-<script>
-  // SCAIA DNA Gel Image Assist
-  (function () {
-    const btn = document.getElementById("analyzeGelBtn");
-    const imageInput = document.getElementById("gelImageInput");
-    const ladderLaneInput = document.getElementById("gelLadderLaneInput");
-    const ladderSizesInput = document.getElementById("gelLadderSizesInput");
-    const targetSizeInput = document.getElementById("gelTargetSizeInput");
-    const chatMessages = document.getElementById("scdChatMessages");
-
-    if (!btn || !imageInput || !chatMessages) return;
-
-    function addGelMessage(text, imageBase64) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "scdMsg bot";
-
-      const bubble = document.createElement("div");
-      bubble.className = "scdBubble ltrText";
-      bubble.setAttribute("dir", "ltr");
-
-      const safeText = String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;");
-
-      bubble.innerHTML = safeText;
-
-      if (imageBase64) {
-        const img = document.createElement("img");
-        img.className = "gelAnnotatedImage";
-        img.src = "data:image/png;base64," + imageBase64;
-        bubble.appendChild(document.createElement("br"));
-        bubble.appendChild(img);
-      }
-
-      wrapper.appendChild(bubble);
-      chatMessages.appendChild(wrapper);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function formatGelResults(data) {
-      let text = data.message + "\\n\\n";
-
-      if (data.results && data.results.length) {
-        text += "Detected bands by lane:\\n";
-        data.results.forEach((lane) => {
-          text += `- Lane ${lane.lane} (${lane.type}): `;
-          if (!lane.bands || lane.bands.length === 0) {
-            text += "no clear bands detected\\n";
-          } else {
-            text += lane.bands.map((b) => `~${Math.round(b.estimated_bp)} bp`).join(", ") + "\\n";
-          }
-        });
-      }
-
-      return text;
-    }
-
-    btn.addEventListener("click", async function () {
-      if (!imageInput.files || !imageInput.files[0]) {
-        addGelMessage("Please upload a gel image first.");
-        return;
-      }
-
-      const form = new FormData();
-      form.append("image", imageInput.files[0]);
-      form.append("ladder_lane", ladderLaneInput.value || "1");
-      form.append("ladder_sizes", ladderSizesInput.value || "1500,1000,700,500,300,200,100");
-      form.append("target_size", targetSizeInput.value || "");
-
-      btn.disabled = true;
-      btn.textContent = "Analyzing...";
-
-      try {
-        const res = await fetch("/analyze-gel", {
-          method: "POST",
-          body: form
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Gel analysis failed.");
-        }
-
-        addGelMessage(formatGelResults(data), data.annotated_image_base64);
-      } catch (err) {
-        addGelMessage("Gel image analysis error: " + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Analyze Gel Image";
-      }
-    });
-  })();
-</script>
-
-
-<script>
-  // SCAIA PGx Lab Result Interpreter
-  (function () {
-    const btn = document.getElementById("analyzeAssayBtn");
-    const fileInput = document.getElementById("assayFileInput");
-    const assayType = document.getElementById("assayTypeSelect");
-    const geneInput = document.getElementById("assayGeneInput");
-    const variantInput = document.getElementById("assayVariantInput");
-    const expectedInput = document.getElementById("assayExpectedInput");
-    const notesInput = document.getElementById("assayNotesInput");
-    const chatMessages = document.getElementById("scdChatMessages");
-
-    if (!btn || !fileInput || !chatMessages) return;
-
-    function addAssayMessage(text) {
-      const wrapper = document.createElement("div");
-      wrapper.className = "scdMsg bot";
-
-      const bubble = document.createElement("div");
-      bubble.className = /[\u0600-\u06FF]/.test(String(text)) ? "scdBubble rtlText" : "scdBubble ltrText";
-      bubble.setAttribute("dir", /[\u0600-\u06FF]/.test(String(text)) ? "rtl" : "ltr");
-
-      const safeText = String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/\n/g, "<br>");
-
-      bubble.innerHTML = safeText;
-      wrapper.appendChild(bubble);
-      chatMessages.appendChild(wrapper);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    btn.addEventListener("click", async function () {
-      if (!fileInput.files || !fileInput.files[0]) {
-        addAssayMessage("Please upload an assay image first.");
-        return;
-      }
-
-      const form = new FormData();
-      form.append("file", fileInput.files[0]);
-      form.append("assay_type", assayType.value || "auto");
-      form.append("gene_target", geneInput.value || "");
-      form.append("variant_target", variantInput.value || "");
-      form.append("expected_result", expectedInput.value || "");
-      form.append("extra_notes", notesInput.value || "");
-
-      btn.disabled = true;
-      btn.textContent = "Analyzing...";
-
-      try {
-        const res = await fetch("/analyze-assay", {
-          method: "POST",
-          body: form
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          throw new Error(data.error || "Analysis failed.");
-        }
-
-        addAssayMessage(data.answer);
-      } catch (err) {
-        addAssayMessage("PGx lab image analysis error: " + err.message);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = "Analyze PGx Lab Image";
-      }
-    });
-  })();
-</script>
-
-
-<script>
-  // Cleaner lab analysis flow: show requirements only when needed
-  (function () {
-    const gelBox = document.querySelector(".scaiaGelAssist");
-    const assayBox = document.querySelector(".scaiaAssayInterpreter");
-    const assayTypeSelect = document.getElementById("assayTypeSelect");
-    const chatInput = document.getElementById("scdChatInput") || document.getElementById("chatInput");
-    const chatMessages = document.getElementById("scdChatMessages") || document.getElementById("chatMessages");
-
-    function addHelperMessage(html, dir = "ltr") {
-      if (!chatMessages) return;
-
-      const wrapper = document.createElement("div");
-      wrapper.className = "scdMsg bot";
-
-      const bubble = document.createElement("div");
-      bubble.className = dir === "rtl" ? "scdBubble rtlText" : "scdBubble ltrText";
-      bubble.setAttribute("dir", dir);
-      bubble.innerHTML = html;
-
-      wrapper.appendChild(bubble);
-      chatMessages.appendChild(wrapper);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-
-    function hideLabTools() {
-      if (gelBox) gelBox.classList.remove("activeLabTool");
-      if (assayBox) assayBox.classList.remove("activeLabTool");
-    }
-
-    function showGelRequirements() {
-      hideLabTools();
-      if (gelBox) gelBox.classList.add("activeLabTool");
-
-      addHelperMessage(`
-        <b>Gel image analysis requirements:</b><br>
-        1. Upload a cropped gel image only.<br>
-        2. Enter the ladder lane number.<br>
-        3. Enter ladder sizes from top to bottom.<br>
-        4. Optional: enter expected target size in bp.<br><br>
-        I will estimate band sizes using the DNA ladder. Educational interpretation only.
-      `);
-    }
-
-    function showAssayRequirements(type) {
-      hideLabTools();
-      if (assayBox) assayBox.classList.add("activeLabTool");
-      if (assayTypeSelect) assayTypeSelect.value = type || "auto";
-
-      const labels = {
-        sanger: "Sanger chromatogram",
-        qpcr: "qPCR amplification curve",
-        allelic_discrimination: "Allelic discrimination plot",
-        hrm: "HRM / melt curve",
-        cnv: "Copy number / CNV plot",
-        ngs_table: "NGS variant table screenshot",
-        auto: "PGx lab result image"
-      };
-
-      addHelperMessage(`
-        <b>${labels[type] || labels.auto} requirements:</b><br>
-        1. Upload the assay image/screenshot.<br>
-        2. Add gene target if known, e.g., CYP2D6.<br>
-        3. Add variant/allele if known, e.g., *4 or rs3892097.<br>
-        4. Add expected result or controls if available.<br>
-        5. Add notes such as sample lane, control labels, threshold, or reference sequence.<br><br>
-        I will give a preliminary educational interpretation, not a final genotype call.
-      `);
-    }
-
-    function detectLabIntent(text) {
-      const q = String(text || "").toLowerCase();
-
-      if (/gel|electrophoresis|band|bands|ladder|bp|جل|باند|لادر/.test(q)) return "gel";
-      if (/sanger|chromatogram|peak|peaks|sequencing|سانجر/.test(q)) return "sanger";
-      if (/qpcr|real.?time|ct value|amplification|منحنى/.test(q)) return "qpcr";
-      if (/allelic|discrimination|cluster|clusters|allele plot/.test(q)) return "allelic_discrimination";
-      if (/hrm|melt|melting|tm|melt curve/.test(q)) return "hrm";
-      if (/cnv|copy number|duplication|deletion|نسخ/.test(q)) return "cnv";
-      if (/ngs|variant table|coverage|zygosity|vcf/.test(q)) return "ngs_table";
-      if (/dna|pgx|genetic|genotype|تحليل جين|تحليل dna/.test(q)) return "auto";
-
-      return null;
-    }
-
-    document.querySelectorAll("[data-lab-tool]").forEach((btn) => {
-      btn.addEventListener("click", function () {
-        const type = btn.getAttribute("data-lab-tool");
-        if (type === "gel") showGelRequirements();
-        else showAssayRequirements(type);
-      });
-    });
-
-    if (chatInput) {
-      chatInput.addEventListener("keydown", function (e) {
-        if (e.key !== "Enter") return;
-
-        const type = detectLabIntent(chatInput.value);
-        if (!type) return;
-
-        setTimeout(function () {
-          if (type === "gel") showGelRequirements();
-          else showAssayRequirements(type);
-        }, 250);
-      });
-    }
-
-    window.scaiaShowLabTool = function (type) {
-      if (type === "gel") showGelRequirements();
-      else showAssayRequirements(type || "auto");
-    };
-  })();
-</script>
-
-
-
-
-
-<script>
-  // FINAL stable SCAIA layout/navigation behavior
-  (function () {
-    function overlay() {
-      return document.querySelector(".scdChatOverlay") || document.getElementById("scdChatOverlay");
-    }
-
-    function modal() {
-      return document.querySelector(".scdChatModal") || document.getElementById("scdChatModal");
-    }
-
-    function closeSCAIA() {
-      const ov = overlay();
-      if (ov) {
-        ov.style.display = "none";
-        ov.classList.remove("open", "active", "show");
-      }
-      document.body.classList.remove("scaiaOpen", "chatOpen", "scdChatOpen");
-    }
-
-    function openSCAIA() {
-      const ov = overlay();
-      if (ov) {
-        ov.style.display = "flex";
-        ov.classList.add("open");
-      }
-      document.body.classList.add("scaiaOpen");
-    }
-
-    function removeQuickQuestions() {
-      const quickTexts = [
-        "Why hydromorphone?",
-        "Why avoid tramadol?",
-        "Explain CYP2D6 phenotype",
-        "Why is safety risk high?"
-      ];
-
-      const m = modal();
-      if (!m) return;
-
-      m.querySelectorAll("button, a, [role='button']").forEach((el) => {
-        const t = (el.textContent || "").trim();
-        if (quickTexts.includes(t)) el.remove();
-      });
-    }
-
-    function ensureBackButton() {
-      const m = modal();
-      if (!m) return;
-
-      let btn = document.getElementById("scaiaBackToToolBtn");
-      if (!btn) {
-        btn = document.createElement("button");
-        btn.id = "scaiaBackToToolBtn";
-        btn.type = "button";
-        btn.textContent = "← Back to SCDAid";
-        m.appendChild(btn);
-      }
-
-      btn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeSCAIA();
-      };
-    }
-
-    function keepChatAtBottom() {
-      const box = document.getElementById("scdChatMessages") ||
-                  document.getElementById("chatMessages") ||
-                  document.querySelector(".scdChatMessages");
-
-      if (!box) return;
-
-      // Do not force top scroll when lab tools open
-      box.style.scrollBehavior = "smooth";
-    }
-
-    function bindOpenButtons() {
-      document.querySelectorAll("button, a, [role='button']").forEach((el) => {
-        const t = (el.textContent || "").trim().toLowerCase();
-
-        if (t === "scaia" || t.includes("ask scaia") || t.includes("chat with scaia")) {
-          el.onclick = function (e) {
-            e.preventDefault();
-            openSCAIA();
-          };
-        }
-      });
-    }
-
-    function init() {
-      removeQuickQuestions();
-      ensureBackButton();
-      keepChatAtBottom();
-      bindOpenButtons();
-    }
-
-    document.addEventListener("DOMContentLoaded", init);
-    window.addEventListener("load", init);
-
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") closeSCAIA();
-    });
-
-    setInterval(init, 700);
-
-    window.openSCAIA = openSCAIA;
-    window.closeSCAIA = closeSCAIA;
-  })();
-</script>
-
-<script src="scaia-clean-fix.js"></script>
-
-
-
-
-<script>
-  // Final no-reload Back to SCDAid fix
-  (function () {
-    function closeSCAIAHard() {
-      document.body.classList.remove("scaiaOpen", "chatOpen", "scdChatOpen");
-      document.body.classList.add("forceSCAIAClosed");
-
-      const selectors = [
-        ".scdChatOverlay",
-        "#scdChatOverlay",
-        ".chatOverlay",
-        "[class*='ChatOverlay']",
-        "[class*='chatOverlay']",
-        ".scdChatModal",
-        "#scdChatModal",
-        "[class*='ChatModal']",
-        "[class*='chatModal']"
-      ];
-
-      document.querySelectorAll(selectors.join(",")).forEach(function (el) {
-        el.style.display = "none";
-        el.classList.remove("open", "active", "show", "isOpen");
-      });
-
-      // Remove ?home=1 without reloading
-      if (window.history && window.location.search) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    }
-
-    function openSCAIAHard() {
-      document.body.classList.remove("forceSCAIAClosed");
-      document.body.classList.add("scaiaOpen");
-
-      document.querySelectorAll(".scdChatOverlay, #scdChatOverlay").forEach(function (el) {
-        el.style.display = "flex";
-        el.classList.add("open");
-      });
-
-      document.querySelectorAll(".scdChatModal, #scdChatModal").forEach(function (el) {
-        el.style.display = "grid";
-      });
-    }
-
-    function ensureBackButton() {
-      let btn = document.getElementById("forceBackToSCDAidBtn");
-
-      if (!btn) {
-        btn = document.createElement("button");
-        btn.id = "forceBackToSCDAidBtn";
-        btn.type = "button";
-        btn.textContent = "← Back to SCDAid";
-        document.body.appendChild(btn);
-      }
-
-      btn.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        closeSCAIAHard();
-        return false;
-      };
-    }
-
-    function bindSCAIAOpenButtons() {
-      document.querySelectorAll("button, a, [role='button']").forEach(function (el) {
-        const txt = (el.textContent || "").trim().toLowerCase();
-
-        if (txt === "scaia" || txt.includes("ask scaia") || txt.includes("chat with scaia")) {
-          el.onclick = function (e) {
-            e.preventDefault();
-            openSCAIAHard();
-            return false;
-          };
-        }
-      });
-    }
-
-    function init() {
-      ensureBackButton();
-      bindSCAIAOpenButtons();
-
-      // If page loaded with ?home=1, close without reloading again
-      if (new URLSearchParams(window.location.search).get("home") === "1") {
-        closeSCAIAHard();
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", init);
-    window.addEventListener("load", init);
-    setInterval(init, 1000);
-
-    document.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") closeSCAIAHard();
-    }, true);
-
-    document.addEventListener("click", function (e) {
-      const el = e.target;
-      if (!el) return;
-
-      if (el.id === "forceBackToSCDAidBtn" || (el.textContent || "").trim() === "← Back to SCDAid") {
-        e.preventDefault();
-        e.stopPropagation();
-        closeSCAIAHard();
-        return false;
-      }
-    }, true);
-
-    window.closeSCAIA = closeSCAIAHard;
-    window.openSCAIA = openSCAIAHard;
-  })();
-</script>
-
-<script src="scaia-lab-window.js"></script>
-<script src="scaia-lab-trigger-fix.js"></script>
-<script src="scaia-gel-logic-answer.js"></script>
 <script src="scaia-copy-actions.js"></script>
-<script src="scaia-lab-routing-guard.js"></script>
 </body>
 </html>
