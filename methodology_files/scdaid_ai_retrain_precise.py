@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import joblib
@@ -15,6 +17,9 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 warnings.filterwarnings("ignore")
 
 np.random.seed(42)
+
+_ROOT = Path(__file__).resolve().parent.parent
+_METH = Path(__file__).resolve().parent
 
 N = 6000
 
@@ -312,9 +317,10 @@ for _ in range(N):
 
 
 df = pd.DataFrame(data)
-df.to_csv("scdaid_synthetic_dataset_precise.csv", index=False)
+_ds_out = _METH / "scdaid_synthetic_dataset_precise.csv"
+df.to_csv(_ds_out, index=False)
 
-print("\nDataset saved as: scdaid_synthetic_dataset_precise.csv")
+print("\nDataset saved as:", _ds_out)
 print("\nAnalgesic label distribution:")
 print(df["analgesic_recommendation"].value_counts())
 print("\nSafety label distribution:")
@@ -431,8 +437,9 @@ for target in target_columns:
     print("Confusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
 
-    joblib.dump(model, model_files[target])
-    print("\nSaved model as:", model_files[target])
+    out_path = _ROOT / model_files[target]
+    joblib.dump(model, out_path)
+    print("\nSaved model as:", out_path)
 
 
 print("\nAll precise SCDAid AI models trained and saved successfully.")

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SCDAid Hybrid AI Methodology — Flowchart</title>
+  <style>
+    :root {
+      --arrow: #4a5568;
+      --title: #1a202c;
+      --sub: #4a5568;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: #fafbfc;
+      color: var(--title);
+      padding: 24px 16px 48px;
+    }
+    h1 {
+      text-align: center;
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin: 0 0 8px;
+      line-height: 1.35;
+      max-width: 56rem;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .subtitle {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--sub);
+      max-width: 42rem;
+      margin: 0 auto 20px;
+      line-height: 1.45;
+    }
+    .diagram-wrap {
+      max-width: 1200px;
+      margin: 0 auto;
+      overflow-x: auto;
+      background: #fff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 16px 8px 24px;
+    }
+    svg.flowchart {
+      display: block;
+      width: 100%;
+      height: auto;
+      min-width: 900px;
+    }
+    .box text, .box tspan {
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      pointer-events: none;
+    }
+    .hdr {
+      font-size: 13px;
+      font-weight: 600;
+      fill: var(--title);
+    }
+    .lbl {
+      font-size: 11px;
+      font-weight: 500;
+      fill: #2d3748;
+    }
+    .sml {
+      font-size: 9.5px;
+      font-weight: 400;
+      fill: #4a5568;
+    }
+    .col-title {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+      fill: #2d3748;
+    }
+    .arrow-line {
+      stroke: var(--arrow);
+      stroke-width: 1.5;
+      fill: none;
+    }
+    .arrow-dash {
+      stroke: var(--arrow);
+      stroke-width: 1.5;
+      fill: none;
+      stroke-dasharray: 5 4;
+    }
+    .rect-in {
+      fill: #e8f2fc;
+      stroke: #5b9bd5;
+      stroke-width: 1.5;
+    }
+    .rect-core {
+      fill: #e6f5ef;
+      stroke: #3d9b6e;
+      stroke-width: 1.5;
+    }
+    .rect-out {
+      fill: #f0ebf8;
+      stroke: #8b6fbf;
+      stroke-width: 1.5;
+    }
+    .rect-scaia {
+      fill: #f7fafc;
+      stroke: #718096;
+      stroke-width: 1.5;
+      stroke-dasharray: 5 3;
+    }
+    .note {
+      max-width: 56rem;
+      margin: 16px auto 0;
+      font-size: 0.75rem;
+      color: var(--sub);
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>SCDAid Hybrid AI Methodology &amp; Decision Workflow</h1>
+  <p class="subtitle">Edit the SVG in this file to change labels or layout. Boxes use three column bands: inputs (blue), engines (green), outputs (purple).</p>
+
+  <div class="diagram-wrap">
+    <svg class="flowchart" viewBox="0 0 1080 820" xmlns="http://www.w3.org/2000/svg" aria-labelledby="flowTitle">
+      <title id="flowTitle">SCDAid methodology flowchart</title>
+
+      <defs>
+        <marker id="mEnd" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <polygon points="0 0, 8 4, 0 8" fill="#4a5568" />
+        </marker>
+      </defs>
+
+      <!-- Column headers -->
+      <text class="col-title" x="130" y="28" text-anchor="middle">Inputs</text>
+      <text class="col-title" x="540" y="28" text-anchor="middle">Core Processing Engines</text>
+      <text class="col-title" x="930" y="28" text-anchor="middle">Final Outputs</text>
+
+      <line x1="360" y1="14" x2="360" y2="805" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="4 4" />
+      <line x1="720" y1="14" x2="720" y2="805" stroke="#cbd5e0" stroke-width="1" stroke-dasharray="4 4" />
+
+      <!-- ========== INPUTS COLUMN ========== -->
+      <g class="box" id="box-genetic">
+        <rect x="24" y="52" width="212" height="76" rx="6" class="rect-in" />
+        <text class="hdr" x="130" y="76" text-anchor="middle">Genetic data</text>
+        <text class="sml" x="130" y="96" text-anchor="middle">CYP2D6 · inhibitors · phenoconversion</text>
+        <text class="sml" x="130" y="114" text-anchor="middle">→ CPIC · ML phenotype</text>
+      </g>
+
+      <g class="box" id="box-clinical">
+        <rect x="24" y="144" width="212" height="100" rx="6" class="rect-in" />
+        <text class="hdr" x="130" y="168" text-anchor="middle">Clinical data</text>
+        <text class="sml" x="130" y="186" text-anchor="middle">Demographics · pain · eGFR · SpO2</text>
+        <text class="sml" x="130" y="202" text-anchor="middle">ACS · inflammation</text>
+        <text class="sml" x="130" y="218" text-anchor="middle">Codeine fail · morphine allergy</text>
+        <text class="sml" x="130" y="234" text-anchor="middle">Sedatives · opioid tolerance</text>
+      </g>
+
+      <!-- ========== CORE COLUMN ========== -->
+      <g class="box" id="box-cpic">
+        <rect x="384" y="52" width="312" height="72" rx="6" class="rect-core" />
+        <text class="hdr" x="540" y="78" text-anchor="middle">CPIC CYP2D6 engine</text>
+        <text class="sml" x="540" y="98" text-anchor="middle">Rule-based · activity score · phenotype · phenoconversion</text>
+      </g>
+
+      <g class="box" id="box-ml">
+        <rect x="384" y="140" width="312" height="108" rx="6" class="rect-core" />
+        <text class="hdr" x="540" y="166" text-anchor="middle">ML ensemble (soft vote)</text>
+        <text class="sml" x="540" y="184" text-anchor="middle">Logistic Regression + Random Forest per task</text>
+        <text class="lbl" x="540" y="206" text-anchor="middle">① Phenotype ② Analgesic ③ Safety</text>
+        <text class="sml" x="540" y="228" text-anchor="middle">Probabilities + nonlinear interactions</text>
+      </g>
+
+      <g class="box" id="box-guard">
+        <rect x="384" y="264" width="312" height="120" rx="6" class="rect-core" />
+        <text class="hdr" x="540" y="290" text-anchor="middle">Guardrails / overrides</text>
+        <text class="sml" x="540" y="308" text-anchor="middle">eGFR &lt;30 → fentanyl · 30–59 → hydromorphone</text>
+        <text class="sml" x="540" y="324" text-anchor="middle">Morphine allergy → block morphine</text>
+        <text class="sml" x="540" y="340" text-anchor="middle">PM/UM → no codeine/tramadol</text>
+        <text class="sml" x="540" y="356" text-anchor="middle">Low SpO2 / ACS / sedatives → alerts</text>
+      </g>
+
+      <g class="box" id="box-scaia">
+        <rect x="384" y="400" width="312" height="64" rx="6" class="rect-scaia" />
+        <text class="hdr" x="540" y="426" text-anchor="middle">SCAIA Chat</text>
+        <text class="sml" x="540" y="446" text-anchor="middle">Explain · KB — not primary predictor</text>
+      </g>
+
+      <!-- ========== OUTPUTS COLUMN ========== -->
+      <g class="box" id="out-pheno">
+        <rect x="744" y="52" width="312" height="56" rx="6" class="rect-out" />
+        <text class="hdr" x="900" y="86" text-anchor="middle">Final CYP2D6 phenotype</text>
+      </g>
+      <g class="box" id="out-analgesic">
+        <rect x="744" y="120" width="312" height="56" rx="6" class="rect-out" />
+        <text class="hdr" x="900" y="154" text-anchor="middle">Analgesic recommendation</text>
+        <text class="sml" x="900" y="168" text-anchor="middle">(guardrail-adjusted)</text>
+      </g>
+      <g class="box" id="out-safety">
+        <rect x="744" y="188" width="312" height="56" rx="6" class="rect-out" />
+        <text class="hdr" x="900" y="222" text-anchor="middle">Safety risk level</text>
+      </g>
+      <g class="box" id="out-monitor">
+        <rect x="744" y="256" width="312" height="56" rx="6" class="rect-out" />
+        <text class="hdr" x="900" y="290" text-anchor="middle">Monitoring requirements</text>
+      </g>
+      <g class="box" id="out-explain">
+        <rect x="744" y="324" width="312" height="56" rx="6" class="rect-out" />
+        <text class="hdr" x="900" y="358" text-anchor="middle">Explanation (SCAIA)</text>
+      </g>
+
+      <!-- Arrows: inputs → core (orthogonal) -->
+      <path class="arrow-line" d="M 236 90 L 308 90 L 308 88 L 384 88" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 236 90 L 308 90 L 308 172 L 384 172" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 236 194 L 384 194" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 236 194 L 328 194 L 328 324 L 384 324" marker-end="url(#mEnd)" />
+
+      <!-- Arrows: core stack (vertical) -->
+      <path class="arrow-line" d="M 540 124 L 540 140" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 540 248 L 540 264" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 540 384 L 540 400" marker-end="url(#mEnd)" />
+
+      <!-- Arrows: core → outputs (CPIC + ML heads → phenotype; ML → analgesic & safety) -->
+      <path class="arrow-line" d="M 696 88 L 744 80" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 696 172 L 724 172 L 724 86 L 744 86" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 696 196 L 718 196 L 718 148 L 744 148" marker-end="url(#mEnd)" />
+      <path class="arrow-line" d="M 696 220 L 718 220 L 718 216 L 744 216" marker-end="url(#mEnd)" />
+
+      <!-- Guardrails (dashed) → analgesic, safety, monitoring -->
+      <path class="arrow-dash" d="M 696 308 L 732 308 L 732 156 L 744 156" marker-end="url(#mEnd)" />
+      <path class="arrow-dash" d="M 696 324 L 732 324 L 732 220 L 744 220" marker-end="url(#mEnd)" />
+      <path class="arrow-dash" d="M 696 340 L 732 340 L 732 284 L 744 284" marker-end="url(#mEnd)" />
+
+      <!-- SCAIA (dashed) → explanation -->
+      <path class="arrow-dash" d="M 696 432 L 732 432 L 732 352 L 744 352" marker-end="url(#mEnd)" />
+
+      <!-- Legend -->
+      <rect x="24" y="500" width="1032" height="100" rx="6" fill="#f7fafc" stroke="#e2e8f0" />
+      <text class="hdr" x="48" y="528">Legend</text>
+      <text class="sml" x="48" y="548">Solid arrows: primary data / model flow</text>
+      <text class="sml" x="48" y="564">Dashed arrows: guardrail adjustments and SCAIA explanation path</text>
+      <text class="sml" x="48" y="584">Resize the SVG viewBox or box rect coordinates to reflow; edit &lt;text&gt; nodes for labels.</text>
+    </svg>
+  </div>
+
+  <p class="note">File: <strong>scdaid-flowchart.html</strong> — open in a browser or edit in Cursor. SVG <code>&lt;text&gt;</code> and <code>&lt;rect&gt;</code> coordinates define the diagram.</p>
+</body>
+</html>

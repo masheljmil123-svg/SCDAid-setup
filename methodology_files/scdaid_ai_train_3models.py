@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import joblib
 
@@ -11,11 +13,15 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 
 
+# Project root (parent of methodology_files/) — runtime .pkl models load from here.
+_ROOT = Path(__file__).resolve().parent.parent
+_METH = Path(__file__).resolve().parent
+
 # =========================
 # 1. Load synthetic dataset
 # =========================
 
-df = pd.read_csv("scdaid_synthetic_dataset.csv")
+df = pd.read_csv(_METH / "scdaid_synthetic_dataset.csv")
 
 
 # =========================
@@ -138,9 +144,10 @@ for target in target_columns:
     print("Confusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
 
-    joblib.dump(model, model_files[target])
+    out_path = _ROOT / model_files[target]
+    joblib.dump(model, out_path)
 
-    print("\nSaved model as:", model_files[target])
+    print("\nSaved model as:", out_path)
 
 
 print("\nAll 3 SCDAid AI models trained and saved successfully.")

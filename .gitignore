@@ -1,23 +1,8 @@
-# Python
 __pycache__/
 *.pyc
-.env
-venv/
-.venv/
-
-# Secrets
-.env
-*.key
-
-# Backups
-*backup*
-*_backup_*
-app_backup*
-index_backup*
-learn_backup*
-
-# Mac
 .DS_Store
-
-# Large/local files
+.env
+.venv/
+venv/
+archive_unused_files/
 *.zip

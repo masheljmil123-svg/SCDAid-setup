@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 from sklearn.model_selection import train_test_split
@@ -83,5 +85,7 @@ X_train, X_test, y_train, y_test = train_test_split(
 
 model.fit(X_train, y_train)
 
-joblib.dump(model, "phenotype_model.joblib")
-print("Model trained and saved as phenotype_model.joblib")
+_meth = Path(__file__).resolve().parent
+_out = _meth / "phenotype_model.joblib"
+joblib.dump(model, _out)
+print("Model trained and saved as", _out)

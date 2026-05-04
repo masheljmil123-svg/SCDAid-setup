@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pandas as pd
 import joblib
 
@@ -6,7 +8,8 @@ import joblib
 # 1. Load trained AI model
 # =========================
 
-model = joblib.load("scdaid_ai_model.pkl")
+_meth = Path(__file__).resolve().parent
+model = joblib.load(_meth / "scdaid_ai_model.pkl")
 
 
 # =========================
