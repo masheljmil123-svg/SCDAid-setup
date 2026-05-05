@@ -400,6 +400,62 @@ def build_explanation(patient, functional_prediction, analgesic_prediction, safe
     return explanation
 
 
+def build_medication_specific_warnings(patient, functional_prediction):
+    warnings = [
+        "Meperidine: strongly not recommended due to neurotoxicity (normeperidine accumulation).",
+        "Codeine & tramadol: not recommended in acute VOC due to CYP2D6 variability and unpredictable efficacy/safety.",
+    ]
+    if functional_prediction in ["PM", "UM"]:
+        warnings.append("CYP2D6 PM/UM: avoid codeine and tramadol.")
+    if patient["renal_risk"] == "high":
+        warnings.append("eGFR < 30: avoid NSAIDs and avoid morphine metabolite accumulation.")
+    elif patient["renal_risk"] == "moderate":
+        warnings.append("eGFR 30–59: use renal caution; hydromorphone is generally preferred.")
+    if patient["morphine_allergy"] == "yes":
+        warnings.append("Morphine allergy: block morphine-containing recommendations.")
+    return warnings
+
+
+def build_monitoring_alerts(patient):
+    alerts = []
+    if patient["spo2"] < 95:
+        alerts.append("Low SpO2 (<95%): increase respiratory monitoring and reassess oxygen need.")
+    if patient["suspected_acs"] == "yes":
+        alerts.append("Suspected ACS: urgent chest/respiratory evaluation and close monitoring.")
+    if patient["sedatives"] == "yes":
+        alerts.append("Concurrent sedatives: increased oversedation/respiratory depression risk.")
+    if patient["renal_risk"] == "high":
+        alerts.append("High renal risk: monitor creatinine/eGFR and avoid nephrotoxins.")
+    if not alerts:
+        alerts.append("Standard VOC monitoring: vitals, pain score, sedation scale, and urine output.")
+    return alerts
+
+
+def build_dose_notes(analgesic_prediction, weight_kg, pain_severity, egfr):
+    severe = str(pain_severity or "").lower() == "severe"
+    lines = []
+
+    if "fentanyl" in analgesic_prediction:
+        mcg_per_kg = 1.0 if severe else 0.5
+        mcg = min(max(weight_kg, 0) * mcg_per_kg, 100)
+        lines.append(f"Fentanyl IV starting range: ~{round(mcg)} mcg (about {mcg_per_kg} mcg/kg), titrate q5–10 min.")
+    elif "hydromorphone" in analgesic_prediction:
+        mg_per_kg = 0.015 if severe else 0.01
+        mg = min(max(weight_kg, 0) * mg_per_kg, 1.5 if severe else 1.0)
+        lines.append(f"Hydromorphone IV starting range: ~{round(mg, 2)} mg (about {mg_per_kg} mg/kg), titrate q15–30 min.")
+    elif "morphine" in analgesic_prediction:
+        mg_per_kg = 0.1 if severe else 0.05
+        mg = min(max(weight_kg, 0) * mg_per_kg, 10 if severe else 6)
+        lines.append(f"Morphine IV starting range: ~{round(mg, 1)} mg (about {mg_per_kg} mg/kg), titrate q20–30 min.")
+
+    if egfr < 30:
+        lines.append("Renal guardrail note: eGFR < 30 favors fentanyl and avoiding NSAIDs/morphine metabolite accumulation.")
+    elif egfr < 60:
+        lines.append("Renal guardrail note: eGFR 30–59 favors hydromorphone and renal caution.")
+
+    return lines
+
+
 # =========================
 # Routes
 # =========================
@@ -540,6 +596,9 @@ def predict():
             override_notes
         )
         explanation = enrich_explanation_with_cyp2d6(explanation, cyp2d6_translation)
+        medication_specific_warnings = build_medication_specific_warnings(patient, functional_prediction)
+        monitoring_alerts = build_monitoring_alerts(patient)
+        dose_notes = build_dose_notes(analgesic_prediction, weight_kg, pain_severity, egfr)
 
         disclaimer = (
             "Proof-of-concept: analgesic and safety outputs use ML models trained on clinically informed synthetic data, "
@@ -552,6 +611,9 @@ def predict():
         result = {
             "patient_summary": patient,
             "cyp2d6_translation": cyp2d6_translation,
+            "final_cyp2d6_phenotype": functional_prediction,
+            "final_analgesic_recommendation": analgesic_prediction,
+            "final_safety_risk_level": safety_prediction,
             "functional_phenotype": {
                 "prediction": functional_prediction,
                 "confidence": functional_conf,
@@ -569,6 +631,11 @@ def predict():
             },
             "clinical_explanation": explanation,
             "guardrails_applied": override_notes,
+            "safety_guardrail_modifications": override_notes,
+            "medication_specific_warnings": medication_specific_warnings,
+            "dose_notes": dose_notes,
+            "monitoring_alerts": monitoring_alerts,
+            "explanation_rationale": explanation,
             "disclaimer": disclaimer,
         }
 

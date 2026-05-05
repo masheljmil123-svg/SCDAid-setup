@@ -1045,6 +1045,89 @@ body.lightTheme #mainApp #predictBtn:focus-visible{
   margin-top:12px;
 }
 
+/* Medication-specific warnings — collapsed by default */
+.medicationWarningsBox{
+  padding:14px 18px 16px;
+}
+
+.medicationWarningsToggle{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  margin:0;
+  padding:12px 4px;
+  min-height:44px;
+  border:0;
+  background:transparent;
+  cursor:pointer;
+  font:inherit;
+  font-weight:750;
+  font-size:14px;
+  line-height:1.35;
+  color:#fff;
+  text-align:start;
+  border-radius:12px;
+  transition:background .2s ease,color .2s ease;
+}
+
+.medicationWarningsToggle:hover{
+  background:rgba(255,255,255,.06);
+}
+
+.medicationWarningsToggle:focus-visible{
+  outline:2px solid var(--red2);
+  outline-offset:2px;
+}
+
+.medicationWarningsTitleText{
+  flex:1;
+}
+
+.medicationWarningsChevron{
+  flex-shrink:0;
+  transition:transform .28s ease;
+  opacity:.9;
+}
+
+.medicationWarningsBox.is-open .medicationWarningsChevron{
+  transform:rotate(180deg);
+}
+
+.medicationWarningsPanel{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .28s ease;
+}
+
+.medicationWarningsBox.is-open .medicationWarningsPanel{
+  grid-template-rows:1fr;
+}
+
+.medicationWarningsPanelInner{
+  min-height:0;
+  overflow:hidden;
+}
+
+.medicationWarningsPanelInner ul{
+  margin:10px 0 0;
+  padding:0 0 4px 20px;
+  border-top:1px solid rgba(255,255,255,.08);
+  padding-top:12px;
+}
+
+html[dir="rtl"] .medicationWarningsPanelInner ul{
+  padding-left:0;
+  padding-right:20px;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .medicationWarningsPanel,
+  .medicationWarningsChevron{
+    transition:none !important;
+  }
+}
+
 /* SCDAid AI RESULT CARDS */
 
 .resultBlock{
@@ -1812,6 +1895,18 @@ body.lightTheme .predictionDetails > .predictionDetailsSummary {
 body.lightTheme .predictionDetails {
   background: rgba(255,255,255,.55) !important;
   border-color: rgba(17,24,39,.12) !important;
+}
+
+body.lightTheme .medicationWarningsToggle {
+  color: #111827 !important;
+}
+
+body.lightTheme .medicationWarningsToggle:hover {
+  background: rgba(17,24,39,.06) !important;
+}
+
+body.lightTheme .medicationWarningsPanelInner ul {
+  border-top-color: rgba(17,24,39,.10) !important;
 }
 
 body.lightTheme .predictionSummaryRow {

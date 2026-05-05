@@ -98,6 +98,7 @@ const TXT = {
       monitoring: "General VOC Monitoring",
       safety: "Medication Safety Monitoring",
       avoid: "Avoid / Contraindications",
+      medicationWarningsTitle: "Medication-Specific Warnings & Avoidance",
       stops: "Safety Stops",
       critical: "Critical Safety Flags",
     },
@@ -194,6 +195,7 @@ const TXT = {
       monitoring: "مراقبة عامة لنوبة VOC",
       safety: "مراقبة سلامة الأدوية",
       avoid: "تجنب / موانع",
+      medicationWarningsTitle: "تحذيرات دوائية محددة وتجنب أدوية معينة",
       stops: "قواعد الإيقاف",
       critical: "تنبيهات سلامة حرجة",
     },
@@ -482,138 +484,6 @@ function comtNote(genotype) {
   };
 }
 
-// ---------- Monitoring ----------
-function generalMonitoring() {
-  return [
-    "Vital signs BP HR RR SpO2 Temp q15 to 30 min initially then q1 to 2 h once stable.",
-    "Pain score + Sedation scale RASS PASS + Urine output q1 to 2 h.",
-    "Labs CBC + Cr eGFR + LFT baseline then q12 to 24 h. SpO2 <95 prompts O2.",
-    "Watch for ACS chest pain hypoxia fever. Watch compartment syndrome. Watch neuro changes.",
-  ];
-}
-
-function safetyLines(drug, inputs) {
-  const eGFR = inputs.eGFR;
-  const renal = riskRenal(eGFR);
-  const genoUnknown = inputs.genoAvail === "unknown";
-  const ph = inputs.phenotype;
-  const neph = inputs.nephropathy;
-
-  const map = {
-    Acetaminophen: [
-      "Monitor ALT AST and Cr eGFR.",
-      "Renal: safe short term if eGFR >30. If eGFR <30 use caution and monitor Cr rise.",
-      "Hepatic: avoid >3 g/day if risk factors. Contra severe liver disease.",
-      "Interactions: warfarin INR. Alcohol increases toxicity.",
-      "Stop: ALT >2x ULN or Cr rise >=0.3 mg/dL or no pain relief.",
-    ],
-    NSAIDs: [
-      "Monitor Cr eGFR urine output BP platelets and bleeding.",
-      "Renal: avoid if eGFR <30 or AKI risk.",
-      "CV: fluid retention and HTN risk.",
-      "Interactions: ACEi ARB diuretics anticoagulants.",
-      "Stop: Cr rise >25 percent or urine output <0.5 mL/kg/h.",
-    ],
-    Ketorolac: [
-      "Monitor Cr eGFR urine output and GI bleed signs.",
-      "Renal: contraindicated if eGFR <30. Single dose ok if eGFR >30 with close monitoring.",
-      "Stop: any Cr rise or urine output drop or abdominal pain.",
-    ],
-    Morphine: [
-      "Monitor RR SpO2 sedation frequently (q15 min initially). Watch constipation.",
-      "Renal: active metabolite accumulates if eGFR <60. Consider alternatives if renal risk.",
-      "Resp: if RR <12 hold opioid. If RR <10 or oversedation give naloxone.",
-      "CV: hypotension risk.",
-    ],
-    Hydromorphone: [
-      "Monitor RR SpO2 sedation frequently (q15 min initially).",
-      "Renal: less accumulation than morphine but monitor closely if eGFR <60.",
-      "Resp: if RR <12 hold opioid.",
-    ],
-    Fentanyl: [
-      "Continuous RR SpO2 sedation monitoring.",
-      "Renal: minimal accumulation and preferred if eGFR <30.",
-      "Resp: high potency. Chest wall rigidity possible at higher IV doses.",
-      "CV: bradycardia possible.",
-    ],
-    Ketamine: [
-      "Monitor BP HR and emergence reactions.",
-      "Renal: no adjustment usually required.",
-      "Contra: uncontrolled HTN or psychosis history.",
-      "Stop: BP >180/110 or intolerable hallucinations.",
-    ],
-    Oxycodone: [
-      "Monitor RR sedation constipation.",
-      "Renal: avoid or very low dose if eGFR <30.",
-      "Interactions: CYP3A4 and CYP2D6 inhibitors can increase levels.",
-      "Clinical: use as PO transition when stable and tolerating PO.",
-    ],
-  };
-
-  let lines = map[drug] ? [...map[drug]] : [];
-
-  if ((drug === "NSAIDs" || drug === "Ketorolac") && renal === "high") {
-    lines.unshift("RENAL HIGH RISK: avoid NSAIDs when eGFR <30 or AKI suspected.");
-  }
-
-  if ((drug === "NSAIDs" || drug === "Ketorolac") && neph) {
-    lines.unshift(
-      "NEPHROPATHY FLAG: avoid/minimize NSAIDs when possible due to increased renal risk; prefer non-NSAID options."
-    );
-  }
-
-  if (drug === "Morphine" && (renal === "moderate" || renal === "high")) {
-    lines.unshift("Renal caution: consider hydromorphone or fentanyl instead of morphine.");
-  }
-
-  if (drug === "Oxycodone" && (genoUnknown || ph === "PM" || ph === "UM")) {
-    lines.unshift("CYP2D6 variability may affect efficacy and toxicity. Use caution if genotype unknown or PM/UM.");
-  }
-
-  return lines;
-}
-
-// ---------- Dosing ----------
-function doseIVOpioid(opioid, severity, weightKg) {
-  if (!weightKg || weightKg <= 0) return "-";
-
-  if (opioid === "Morphine") {
-    const mgPerKg = severity === "severe" ? 0.1 : severity === "mild" ? 0.03 : 0.05;
-    const max = severity === "severe" ? 10 : severity === "mild" ? 4 : 6;
-
-    let mg = mgPerKg * weightKg;
-    mg = Math.min(mg, max);
-    mg = roundTo(mg, 0.5);
-
-    return `Morphine IV: ${formatDoseMultiFromMg(mg)} (≈ ${mgPerKg} mg/kg, max ${max} mg) q20–30 min titrate`;
-  }
-
-  if (opioid === "Hydromorphone") {
-    const mgPerKg = severity === "severe" ? 0.015 : severity === "mild" ? 0.005 : 0.01;
-    const max = severity === "severe" ? 1.5 : severity === "mild" ? 0.8 : 1.0;
-
-    let mg = mgPerKg * weightKg;
-    mg = Math.min(mg, max);
-    mg = roundTo(mg, 0.1);
-
-    return `Hydromorphone IV: ${formatDoseMultiFromMg(mg)} (≈ ${mgPerKg} mg/kg, max ${max} mg) q15–30 min titrate`;
-  }
-
-  if (opioid === "Fentanyl") {
-    const mcgPerKg = severity === "severe" ? 1.0 : 0.5;
-    const maxMcg = 100;
-
-    let mcg = mcgPerKg * weightKg;
-    mcg = Math.min(mcg, maxMcg);
-    mcg = roundTo(mcg, 5);
-
-    const mg = mcgToMg(mcg);
-    return `Fentanyl IV: ${formatDoseMultiFromMg(mg)} (≈ ${mcgPerKg} mcg/kg, max ${maxMcg} mcg) q5–10 min titrate`;
-  }
-
-  return "-";
-}
-
 // ---------- Decision logic ----------
 function chooseOpioid(renalRisk, morphineAllergy) {
   if (morphineAllergy) return "Hydromorphone";
@@ -713,68 +583,6 @@ function buildPlan(inputs) {
     nsaidAllowed,
     nephAddons,
   };
-}
-
-function safetyStops(eGFR, nephropathy) {
-  const lines = [];
-
-  lines.push("If RR <12 hold opioid. If RR <10 or oversedation give naloxone.");
-  lines.push("If SpO2 <92 or suspected ACS urgent evaluation and oxygen.");
-  lines.push("If creatinine rises >=0.3 mg/dL within 48 h stop NSAIDs.");
-
-  if (eGFR !== null && eGFR < 30) {
-    lines.push("Renal: avoid NSAIDs and avoid morphine. Prefer fentanyl or hydromorphone.");
-  }
-
-  if (nephropathy) {
-    lines.push("Nephropathy: avoid/minimize NSAIDs when possible; monitor renal function closely with any nephrotoxic exposure.");
-  }
-
-  return lines;
-}
-
-function criticalFlags(inputs, model) {
-  const flags = [];
-
-  if (inputs.suspectedACS) {
-    flags.push("Suspected ACS flag is ON: urgent clinical evaluation is required. Analgesia may be needed, but respiratory monitoring should be close.");
-  }
-
-  if (inputs.respRisk) {
-    flags.push("Respiratory risk is ON: monitor RR, SpO2, and sedation closely when opioids are used.");
-  }
-
-  if (
-    inputs.spo2Numeric !== null &&
-    Number.isFinite(inputs.spo2Numeric) &&
-    inputs.spo2Numeric < 95
-  ) {
-    flags.push(
-      "SpO2 below 95%: increased concern for hypoxia and acute chest syndrome. Monitor SpO2 and respiratory status closely; reassess for oxygen therapy and ACS evaluation per protocol."
-    );
-  }
-
-  if (inputs.sedatives) {
-    flags.push("Concurrent sedatives are ON: increased risk of oversedation and respiratory depression.");
-  }
-
-  if (inputs.morphineAllergy) {
-    flags.push("Morphine allergy is ON: morphine avoided; alternative opioid selected.");
-  }
-
-  if (inputs.nephropathy) {
-    flags.push("SCD nephropathy flag is ON: renal-protective precautions applied; NSAIDs avoided/minimized.");
-  }
-
-  if (model.renalRisk === "high") {
-    flags.push("eGFR indicates high renal risk: avoid NSAIDs and avoid morphine accumulation when possible.");
-  }
-
-  if (inputs.cyp2d6MismatchWarning) {
-    flags.push(inputs.cyp2d6MismatchWarning);
-  }
-
-  return flags;
 }
 
 // ---------- Inputs ----------
@@ -952,267 +760,9 @@ function setPredictStatus({ predicted, confidence, probabilities, note, mode }) 
 }
 
 async function predictPhenotype() {
-  const t = TXT[lang];
-
-  const age = num($("ageInput")?.value);
-
-  let weightKg = num($("weightInput")?.value);
-  const unit = $("weightUnit")?.value || "kg";
-
-  if (weightKg !== null && unit === "lb") {
-    weightKg = lbToKg(weightKg);
-  }
-
-  const egfr = num($("gfrInput")?.value);
-  const spo2State = collectSpo2InputState();
-
-  const errs = patientFieldErrors({
-    age,
-    weightKg,
-    eGFR: egfr,
-    spo2Numeric: spo2State.spo2Numeric,
-    spo2Provided: spo2State.spo2Provided,
-  });
-
-  if (errs.length) {
-    alert(errs.join("\n"));
-    return;
-  }
-
-  const payload = {
-    age,
-    weight: weightKg,
-    egfr,
-    sex: $("sexInput")?.value || "F",
-    cyp2d6_inhibitor: $("inhibitorInput")?.value || "no",
-    prior_codeine_response: $("codeineRespInput")?.value || "ineffective",
-    prior_tramadol_response: $("tramadolRespInput")?.value || "ineffective",
-  };
-
-  $("predictBtn").disabled = true;
-  setPredictStatus({ mode: "loading" });
-
-  try {
-    const res = await fetch(`${API_BASE}/predict_phenotype`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!res.ok) {
-      setPredictStatus({
-        mode: "error",
-        note: t.predictBad,
-      });
-
-      $("predictBtn").disabled = false;
-      return;
-    }
-
-    const out = await res.json();
-
-    $("genoAvail").value = "known";
-    $("cyp2d6Input").disabled = false;
-
-    if (["PM", "IM", "NM", "UM", "EM"].includes(out.predicted)) {
-      const mapped = out.predicted === "NM" ? "EM" : out.predicted;
-      $("cyp2d6Input").value = mapped;
-
-      if ($("cyp2d6_allele1")) $("cyp2d6_allele1").value = "";
-      if ($("cyp2d6_allele2")) $("cyp2d6_allele2").value = "";
-    }
-
-    setPredictStatus({
-      mode: "success",
-      predicted: out.predicted,
-      confidence: out.confidence,
-      probabilities: out.probabilities,
-      note: t.predictApplied,
-    });
-  } catch (e) {
-    setPredictStatus({
-      mode: "error",
-      note: t.predictApiDown,
-    });
-  } finally {
-    $("predictBtn").disabled = false;
-  }
-}
-
-// ---------- Render ----------
-function ul(lines) {
-  return `<ul>${lines.map((x) => `<li>${x}</li>`).join("")}</ul>`;
-}
-
-function render(model) {
-  const t = TXT[lang];
-
-  const renalPill = `<span class="pill ${pillClass(model.renalRisk)}">${
-    t.pills[model.renalRisk]
-  }</span>`;
-
-  const nsaidPill = model.nsaidAllowed
-    ? `<span class="pill ok">${t.pills.ok}</span>`
-    : `<span class="pill danger">${t.pills.avoid}</span>`;
-
-  const safetyBlocksHtml = model.safetyBlocks
-    .map(
-      (b) => `
-    <div class="box">
-      <h3>${b.name}</h3>
-      ${ul(b.lines)}
-    </div>
-  `
-    )
-    .join("");
-
-  const geneticsLines = [];
-
-  if (model.activityScore !== null) {
-    geneticsLines.push(
-      `CYP2D6 Activity Score: <b>${model.activityScore.toFixed(
-        2
-      )}</b> → <b>${cyp2d6Label(model.phenotype)}</b>`
-    );
-  } else {
-    geneticsLines.push(`CYP2D6 phenotype: <b>${cyp2d6Label(model.phenotype)}</b>`);
-  }
-
-  if (model.cyp2d6MismatchWarning && model.cyp2d6ManualSelection) {
-    geneticsLines.push(
-      `<span class="hint"><b>Manual vs allele-derived:</b> Phenotype selector was <b>${cyp2d6Label(
-        model.cyp2d6ManualSelection
-      )}</b>; recommendations use allele-based CPIC translation <b>${cyp2d6Label(model.phenotype)}</b>.</span>`
-    );
-  }
-
-  const oprm1 = oprm1Note(model.oprm1Genotype);
-  if (oprm1) {
-    geneticsLines.push(
-      `<b>${oprm1.title}:</b> ${oprm1.note}<br><span class="hint">${oprm1.alert}</span>`
-    );
-  }
-
-  const comt = comtNote(model.comtGenotype);
-  if (comt) {
-    geneticsLines.push(
-      `<b>${comt.title}:</b> ${comt.note}<br><span class="hint">${comt.alert}</span>`
-    );
-  }
-
-  if (oprm1 || comt) {
-    geneticsLines.push(
-      `<b>Clinical caution:</b> OPRM1 and COMT are supportive modifiers only. They should not override CYP2D6 phenotype, renal safety, respiratory risk, or clinical judgment.`
-    );
-  }
-
-  const geneticsBox = `
-    <div class="box">
-      <h3>${t.sections.genetics}</h3>
-      ${ul(geneticsLines)}
-    </div>
-  `;
-
-  const nephBox =
-    model.nephropathy && model.nephAddons?.length
-      ? `
-      <div class="box">
-        <h3>${t.sections.neph}</h3>
-        ${ul(model.nephAddons)}
-      </div>
-    `
-      : "";
-
-  const criticalBox =
-    model.criticalFlags && model.criticalFlags.length
-      ? `
-      <div class="box">
-        <h3>${t.sections.critical}</h3>
-        ${ul(model.criticalFlags)}
-      </div>
-    `
-      : "";
-
-  const htmlDetails = `
-    <div class="box">
-      <h3>${t.sections.renal}</h3>
-      <div class="pills">${renalPill}<span class="pill info">NSAID</span>${nsaidPill}</div>
-      <div class="hint" style="margin-top:8px;">eGFR: <b>${model.eGFR}</b> mL/min/1.73m²</div>
-      ${
-        model.nephropathy
-          ? `<div class="hint" style="margin-top:6px;"><b>SCD nephropathy flag:</b> ON — renal-protective precautions applied.</div>`
-          : ""
-      }
-    </div>
-
-    ${geneticsBox}
-    ${nephBox}
-
-    <div class="box">
-      <h3>${t.sections.dosing}</h3>
-      <div>${model.ivDose}</div>
-      <div class="hint" style="margin-top:8px;">Primary opioid: <b>${model.opioid}</b></div>
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.plan}</h3>
-      ${ul(model.planMeds.map((m) => m.text))}
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.options}</h3>
-      ${model.options.length ? ul(model.options) : `<div class="hint">-</div>`}
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.monitoring}</h3>
-      ${ul(model.monitoring)}
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.safety}</h3>
-      ${safetyBlocksHtml || `<div class="hint">-</div>`}
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.avoid}</h3>
-      ${ul(model.avoid)}
-    </div>
-
-    <div class="box">
-      <h3>${t.sections.stops}</h3>
-      ${ul(model.stops)}
-    </div>
-  `;
-
-  $("results").innerHTML = `
-    <div class="resultBlock predictionOutput">
-      ${
-        criticalBox
-          ? `<div class="resultAlertStrip resultAlertStrip--danger">${criticalBox}</div>`
-          : ""
-      }
-      <div class="resultCard predictionClassicSummary">
-        <h4>Summary</h4>
-        <div class="pillRow">
-          ${renalPill}
-          <span class="pill info">Opioid: <b>${model.opioid}</b></span>
-          <span class="pill info">${cyp2d6Label(model.phenotype)}</span>
-        </div>
-      </div>
-      <details class="predictionDetails">
-        <summary class="predictionDetailsSummary">
-          <span class="predSumClosed">Show full recommendation details ▼</span>
-          <span class="predSumOpen">Hide full recommendation details ▲</span>
-        </summary>
-        <div class="predictionDetailsInner">
-          ${htmlDetails}
-        </div>
-      </details>
-    </div>
-  `;
+  // Keep backward compatibility for older listeners, but route all final prediction
+  // through the backend /predict pipeline.
+  return runThreeSCDAidModels();
 }
 
 // ---------- Language ----------
@@ -1308,55 +858,8 @@ function setLang(newLang) {
   }
 }
 function run() {
-  const inputs = readInputs();
-  const errs = validate(inputs);
-
-  if (errs.length) {
-    alert(errs.join("\n"));
-    return;
-  }
-
-  const plan = buildPlan(inputs);
-  const opioid = chooseOpioid(plan.renalRisk, inputs.morphineAllergy);
-  const ivDose = doseIVOpioid(opioid, inputs.severity, inputs.weightKg);
-
-  const safetyNames = new Set([opioid]);
-  plan.meds.forEach((m) => safetyNames.add(m.name));
-
-  const safetyBlocks = Array.from(safetyNames).map((name) => ({
-    name,
-    lines: safetyLines(name, inputs),
-  }));
-
-  const model = {
-    eGFR: inputs.eGFR,
-    renalRisk: plan.renalRisk,
-    nsaidAllowed: plan.nsaidAllowed,
-    opioid,
-    ivDose,
-    planMeds: plan.meds,
-    options: plan.options,
-    avoid: plan.avoid,
-    monitoring: generalMonitoring(),
-    safetyBlocks,
-    stops: safetyStops(inputs.eGFR, inputs.nephropathy),
-
-    phenotype: inputs.phenotype,
-    activityScore: inputs.activityScore,
-    cyp2d6ManualSelection: inputs.cyp2d6ManualSelection,
-    cyp2d6MismatchWarning: inputs.cyp2d6MismatchWarning,
-    oprm1Genotype: inputs.oprm1Genotype,
-    comtGenotype: inputs.comtGenotype,
-    nephropathy: inputs.nephropathy,
-    nephAddons: plan.nephAddons,
-  };
-
-  model.criticalFlags = criticalFlags(inputs, model);
-
-  render(model);
-
-  // AUTO-SAVE TO SCDAid Learn
-  saveCaseToLearnDataset(inputs, model);
+  // Frontend keeps validation/formatting, but final recommendation comes from backend.
+  runThreeSCDAidModels();
 }
 
 function reset() {
@@ -2188,6 +1691,15 @@ function renderSCDAidAIResult(result) {
   const explanationHTML = result.clinical_explanation
     .map(item => `<li>${item}</li>`)
     .join("");
+  const warningsHTML = (result.medication_specific_warnings || [])
+    .map(item => `<li>${escapeHtmlSafe(item)}</li>`)
+    .join("");
+  const monitoringHTML = (result.monitoring_alerts || [])
+    .map(item => `<li>${escapeHtmlSafe(item)}</li>`)
+    .join("");
+  const doseNotesHTML = (result.dose_notes || [])
+    .map(item => `<li>${escapeHtmlSafe(item)}</li>`)
+    .join("");
 
   const alertItems = [];
   if (result.guardrails_applied && result.guardrails_applied.length) {
@@ -2297,7 +1809,22 @@ function renderSCDAidAIResult(result) {
             </div>
 
             <div class="resultCard">
-              <h4>Clinical explanation</h4>
+              <h4>4) Medication-Specific Warnings & Avoidance</h4>
+              ${warningsHTML ? `<ul>${warningsHTML}</ul>` : `<p class="hint">No additional warnings returned.</p>`}
+            </div>
+
+            <div class="resultCard">
+              <h4>5) Dose Notes</h4>
+              ${doseNotesHTML ? `<ul>${doseNotesHTML}</ul>` : `<p class="hint">No dose notes returned.</p>`}
+            </div>
+
+            <div class="resultCard">
+              <h4>6) Monitoring Alerts</h4>
+              ${monitoringHTML ? `<ul>${monitoringHTML}</ul>` : `<p class="hint">No special monitoring alerts returned.</p>`}
+            </div>
+
+            <div class="resultCard">
+              <h4>7) Clinical explanation</h4>
               <ul>${explanationHTML}</ul>
             </div>
 
@@ -2413,6 +1940,13 @@ async function runThreeSCDAidModels() {
     }
 
     renderSCDAidAIResult(result);
+    // Keep SCDAid Learn capture while backend owns final recommendation.
+    const inputs = readInputs();
+    const learnModel = {
+      renalRisk: result?.patient_summary?.renal_risk || riskRenal(inputs.eGFR),
+      opioid: String(result?.analgesic_recommendation?.prediction || ""),
+    };
+    saveCaseToLearnDataset(inputs, learnModel);
 
   } catch (error) {
     if (statusBox) {
