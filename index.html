@@ -200,6 +200,22 @@
           </div>
 
           <div class="field">
+            <label for="cyp2d6_diplotype">CYP2D6 genotype/diplotype (optional)</label>
+            <input id="cyp2d6_diplotype" type="text" placeholder="e.g., *1/*4 (if alleles unavailable)" />
+            <div class="hint">Use either allele1+allele2 or a diplotype string; avoid conflicting entries.</div>
+          </div>
+
+          <div class="field">
+            <label for="cyp2d6_copy_number_status">CYP2D6 copy number status</label>
+            <select id="cyp2d6_copy_number_status">
+              <option value="unknown" selected>Unknown</option>
+              <option value="normal">Normal</option>
+              <option value="deletion">Deletion</option>
+              <option value="duplication">Duplication</option>
+            </select>
+          </div>
+
+          <div class="field">
             <label for="optional_gene_select">Optional gene</label>
             <select id="optional_gene_select">
               <option value="" selected>None</option>
@@ -220,10 +236,10 @@
         <div class="inputsTopCell">
       <div class="card stepOneCard">
         <div class="cardHeader">
-          <h2 id="phenoPredTitle">Functional CYP2D6 Phenotype Prediction</h2>
+          <h2 id="phenoPredTitle">CYP2D6 Functional Phenotype Module</h2>
         </div>
           <div id="phenoPredHint" class="hint stepOneHint">
-            This step predicts the functional CYP2D6 phenotype only. The final analgesic decision is made later by SCDAid using phenotype + renal + respiratory + safety inputs.
+            Enter CYP2D6 PGx inputs in one place. SCDAid derives the final CYP2D6 functional phenotype from genotype/phenoconversion when available, or ML proxy logic when genotype is incomplete.
           </div>
 
           <div class="grid smallGrid">
@@ -299,6 +315,7 @@
                 <option value="weak">Weak / possible</option>
                 <option value="moderate">Moderate</option>
                 <option value="strong">Strong</option>
+                <option value="unknown">Unknown</option>
               </select>
               <div class="hint">Auto-filled from medication list; adjust manually for “Other”.</div>
             </div>
@@ -312,20 +329,20 @@
             <div class="field">
               <label id="codeineRespLabel" for="codeineRespInput">Prior codeine response</label>
               <select id="codeineRespInput">
-                <option value="ineffective" selected>Ineffective</option>
+                <option value="unknown" selected>Unknown / not used</option>
                 <option value="effective">Effective</option>
-                <option value="adverse">Adverse effects</option>
-                <option value="unknown">Unknown</option>
+                <option value="ineffective">Ineffective</option>
+                <option value="adverse">Toxicity / adverse effect</option>
               </select>
             </div>
 
             <div class="field">
               <label id="tramadolRespLabel" for="tramadolRespInput">Prior tramadol response</label>
               <select id="tramadolRespInput">
-                <option value="ineffective" selected>Ineffective</option>
+                <option value="unknown" selected>Unknown / not used</option>
                 <option value="effective">Effective</option>
-                <option value="adverse">Adverse effects</option>
-                <option value="unknown">Unknown</option>
+                <option value="ineffective">Ineffective</option>
+                <option value="adverse">Toxicity / adverse effect</option>
               </select>
             </div>
 
@@ -350,19 +367,19 @@
             </div>
 
             <div class="field">
-              <label for="inflammationInput">Inflammation severity</label>
+              <label for="inflammationInput">Acute inflammation / severe acute illness</label>
               <select id="inflammationInput">
-                <option value="none" selected>None</option>
-                <option value="mild">Mild</option>
-                <option value="high">High</option>
+                <option value="unknown" selected>Unknown</option>
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
               </select>
-              <div class="hint">Auto-filled from inflammation type; adjust if needed.</div>
+              <div class="hint">Primary CYP2D6 proxy field when genotype is unavailable or phenoconversion is suspected.</div>
             </div>
 
             <div class="field">
-              <label for="customInflammationInput">Other inflammation description</label>
-              <input id="customInflammationInput" type="text" placeholder="Describe inflammation type" />
-              <div class="hint">Used for documentation; choose severity manually.</div>
+              <label for="customInflammationInput">Acute illness context details (optional)</label>
+              <input id="customInflammationInput" type="text" placeholder="Describe illness/inflammation context" />
+              <div class="hint">Optional free-text context only.</div>
             </div>
 
             <div class="field">
@@ -370,8 +387,9 @@
               <select id="opioidToxicityInput">
                 <option value="no" selected>No</option>
                 <option value="yes">Yes</option>
+                <option value="unknown">Unknown</option>
               </select>
-              <div class="hint">Turns on safety concern if toxicity occurred.</div>
+              <div class="hint">Used as CYP2D6 clinical proxy and safety feature.</div>
             </div>
 
             <div class="field">

@@ -4,7 +4,7 @@ import pandas as pd
 import joblib
 import os
 
-from cyp2d6_engine import translate_cyp2d6_from_alleles
+from cyp2d6_engine import translate_cyp2d6_from_alleles, activity_score_to_phenotype
 from scdaid_decision_engine import (
     enrich_explanation_with_cyp2d6,
     merge_functional_with_cyp2d6,
@@ -127,6 +127,9 @@ def apply_clinical_guardrails(
     suspected_acs,
     sedatives,
     morphine_allergy,
+    previous_codeine_response,
+    previous_tramadol_response,
+    previous_opioid_toxicity,
     functional_prediction,
     functional_conf,
     functional_probs,
@@ -152,6 +155,37 @@ def apply_clinical_guardrails(
     override_notes = []
 
     avoid_codeine_tramadol = functional_prediction in ["PM", "UM"]
+
+    # -------------------------
+    # 0. Prior opioid adverse response / toxicity
+    # -------------------------
+    toxicity_signal = (
+        previous_opioid_toxicity == "yes"
+        or previous_codeine_response == "adverse"
+        or previous_tramadol_response == "adverse"
+    )
+    if toxicity_signal:
+        if safety_prediction == "low":
+            safety_prediction = "moderate"
+            safety_conf = max(safety_conf, 0.90)
+            safety_probs = {
+                "high": 0.08,
+                "moderate": 0.87,
+                "low": 0.05
+            }
+
+        if egfr < 30 or suspected_acs == "yes" or spo2 < 95 or sedatives == "yes":
+            safety_prediction = "high"
+            safety_conf = max(safety_conf, 0.93)
+            safety_probs = {
+                "high": 0.93,
+                "moderate": 0.06,
+                "low": 0.01
+            }
+
+        override_notes.append(
+            "Clinical guardrail applied: prior opioid toxicity or adverse codeine/tramadol response increases safety concern and requires cautious analgesic selection and monitoring."
+        )
 
     # -------------------------
     # 1. Severe renal impairment
@@ -336,6 +370,8 @@ def build_explanation(patient, functional_prediction, analgesic_prediction, safe
 
     if patient["previous_opioid_toxicity"] == "yes":
         explanation.append("Previous opioid toxicity increases safety concern.")
+    if patient.get("previous_codeine_response") == "adverse" or patient.get("previous_tramadol_response") == "adverse":
+        explanation.append("Prior opioid toxicity or adverse response increases safety concern and requires cautious analgesic selection and monitoring.")
 
     if patient["suspected_acs"] == "yes":
         explanation.append("Suspected acute chest syndrome increases respiratory monitoring needs.")
@@ -413,6 +449,8 @@ def build_medication_specific_warnings(patient, functional_prediction):
         warnings.append("eGFR 30–59: use renal caution; hydromorphone is generally preferred.")
     if patient["morphine_allergy"] == "yes":
         warnings.append("Morphine allergy: block morphine-containing recommendations.")
+    if patient.get("previous_opioid_toxicity") == "yes" or patient.get("previous_codeine_response") == "adverse" or patient.get("previous_tramadol_response") == "adverse":
+        warnings.append("Prior opioid toxicity/adverse response: use cautious opioid selection and enhanced monitoring.")
     return warnings
 
 
@@ -456,6 +494,54 @@ def build_dose_notes(analgesic_prediction, weight_kg, pain_severity, egfr):
     return lines
 
 
+def apply_copy_number_adjustment(cyp_bundle, copy_number_status):
+    status = str(copy_number_status or "unknown").strip().lower()
+    if not cyp_bundle:
+        return cyp_bundle, []
+    notes = []
+
+    if status not in {"unknown", "normal", "deletion", "duplication"}:
+        status = "unknown"
+
+    cyp_bundle["copy_number_status"] = status
+    cyp_bundle.setdefault("recommendation_notes", [])
+
+    if not cyp_bundle.get("ok"):
+        if status in {"deletion", "duplication"}:
+            notes.append(
+                f"Copy-number status '{status}' provided, but full genotype translation was incomplete; interpret CYP2D6 function cautiously."
+            )
+        return cyp_bundle, notes
+
+    before = float(cyp_bundle.get("clinical_activity_score", cyp_bundle.get("activity_score", 0.0)))
+    after = before
+    rule = "No copy-number adjustment applied."
+
+    if status == "duplication":
+        after = min(5.0, before + 1.0)
+        rule = "Copy-number duplication: activity score increased to support higher CYP2D6 function (possible UM shift)."
+    elif status == "deletion":
+        after = max(0.0, before - 1.0)
+        rule = "Copy-number deletion: activity score decreased to reflect reduced CYP2D6 function."
+    elif status == "normal":
+        rule = "Copy-number status normal: no score adjustment."
+    elif status == "unknown":
+        rule = "Copy-number status unknown: no score adjustment."
+
+    if status in {"duplication", "deletion"}:
+        cyp_bundle["clinical_activity_score"] = round(after, 4)
+        cyp_bundle["clinical_phenotype_after_phenoconversion"] = activity_score_to_phenotype(after)
+        notes.append(rule)
+    cyp_bundle["copy_number_adjustment"] = {
+        "status": status,
+        "activity_score_before": before,
+        "activity_score_after": after,
+        "rule_applied": rule,
+    }
+    cyp_bundle["recommendation_notes"].append(rule)
+    return cyp_bundle, notes
+
+
 # =========================
 # Routes
 # =========================
@@ -484,16 +570,21 @@ def predict():
 
         cyp2d6_activity_score = clean_float_value(data.get("cyp2d6_activity_score"), 1.5)
         cyp2d6_inhibitor = clean_text_value(data.get("cyp2d6_inhibitor"), "none")
-        inflammation = clean_text_value(data.get("inflammation"), "none")
+        inflammation = clean_text_value(data.get("inflammation"), "unknown")
         previous_codeine_failure = clean_text_value(data.get("previous_codeine_failure"), "no")
         previous_opioid_toxicity = clean_text_value(data.get("previous_opioid_toxicity"), "no")
+        previous_codeine_response = clean_text_value(data.get("previous_codeine_response"), "unknown")
+        previous_tramadol_response = clean_text_value(data.get("previous_tramadol_response"), "unknown")
+        cyp2d6_copy_number_status = clean_text_value(data.get("cyp2d6_copy_number_status"), "unknown")
 
         allele1 = data.get("cyp2d6_allele1")
         allele2 = data.get("cyp2d6_allele2")
         diplotype_in = data.get("cyp2d6_diplotype")
         selected_phenotype_ui = data.get("cyp2d6_selected_phenotype")
+        manual_phenotype_explicit = bool(data.get("cyp2d6_manual_selected"))
         if selected_phenotype_ui is None or str(selected_phenotype_ui).strip() == "":
             selected_phenotype_ui = data.get("cyp2d6_manual_phenotype")
+            manual_phenotype_explicit = bool(selected_phenotype_ui)
 
         cyp2d6_translation = translate_cyp2d6_from_alleles(
             allele1,
@@ -501,6 +592,9 @@ def predict():
             diplotype_in,
             cyp2d6_inhibitor,
             selected_phenotype_ui,
+        )
+        cyp2d6_translation, cnv_notes = apply_copy_number_adjustment(
+            cyp2d6_translation, cyp2d6_copy_number_status
         )
 
         renal_risk = renal_risk_from_egfr(egfr)
@@ -528,21 +622,24 @@ def predict():
             "inflammation": inflammation,
             "previous_codeine_failure": previous_codeine_failure,
             "previous_opioid_toxicity": previous_opioid_toxicity,
+            "previous_codeine_response": previous_codeine_response,
+            "previous_tramadol_response": previous_tramadol_response,
+            "cyp2d6_copy_number_status": cyp2d6_copy_number_status,
             "cyp2d6_translation_applied": bool(cyp2d6_translation.get("ok")),
         }
 
         patient_df = pd.DataFrame([patient])
 
         # AI predictions (analgesic / safety); functional model may be overridden by CPIC translation
-        functional_prediction, functional_conf, functional_probs = predict_with_confidence(
+        ml_functional_prediction, ml_functional_conf, ml_functional_probs = predict_with_confidence(
             functional_model,
             patient_df
         )
 
         functional_prediction, functional_conf, functional_probs = merge_functional_with_cyp2d6(
-            functional_prediction,
-            functional_conf,
-            functional_probs,
+            ml_functional_prediction,
+            ml_functional_conf,
+            ml_functional_probs,
             cyp2d6_translation,
         )
 
@@ -563,6 +660,9 @@ def predict():
             suspected_acs=suspected_acs,
             sedatives=sedatives,
             morphine_allergy=morphine_allergy,
+            previous_codeine_response=previous_codeine_response,
+            previous_tramadol_response=previous_tramadol_response,
+            previous_opioid_toxicity=previous_opioid_toxicity,
             functional_prediction=functional_prediction,
             functional_conf=functional_conf,
             functional_probs=functional_probs,
@@ -596,9 +696,31 @@ def predict():
             override_notes
         )
         explanation = enrich_explanation_with_cyp2d6(explanation, cyp2d6_translation)
+        explanation.extend([n for n in cnv_notes if n not in explanation])
         medication_specific_warnings = build_medication_specific_warnings(patient, functional_prediction)
         monitoring_alerts = build_monitoring_alerts(patient)
         dose_notes = build_dose_notes(analgesic_prediction, weight_kg, pain_severity, egfr)
+
+        phenoconversion_applied = "no"
+        phenotype_source = "ML-predicted"
+        uncertainty_note = "Genotype was unavailable/incomplete; CYP2D6 function was estimated from ML/proxy variables and does not replace genetic testing."
+
+        if cyp2d6_translation.get("ok"):
+            inh_adj = cyp2d6_translation.get("inhibitor_adjustment") or {}
+            before = inh_adj.get("activity_score_before")
+            after = inh_adj.get("activity_score_after")
+            if before is not None and after is not None and float(after) != float(before):
+                phenoconversion_applied = "yes"
+            phenotype_source = "genotype-derived"
+            uncertainty_note = "CYP2D6 function derived from CPIC-based genotype translation."
+
+            if phenoconversion_applied == "yes":
+                phenotype_source = "phenoconversion-adjusted"
+                uncertainty_note = "Genotype-derived phenotype was adjusted for CYP2D6 inhibitor phenoconversion."
+
+        elif manual_phenotype_explicit:
+            phenotype_source = "manually entered"
+            uncertainty_note = "Manual CYP2D6 phenotype was provided; ML probabilities remain supportive."
 
         disclaimer = (
             "Proof-of-concept: analgesic and safety outputs use ML models trained on clinically informed synthetic data, "
@@ -612,6 +734,12 @@ def predict():
             "patient_summary": patient,
             "cyp2d6_translation": cyp2d6_translation,
             "final_cyp2d6_phenotype": functional_prediction,
+            "final_cyp2d6_functional_phenotype": functional_prediction,
+            "genotype_predicted_phenotype": cyp2d6_translation.get("genetic_phenotype") if cyp2d6_translation.get("ok") else None,
+            "ml_predicted_phenotype": ml_functional_prediction,
+            "phenoconversion_applied": phenoconversion_applied,
+            "phenotype_source": phenotype_source,
+            "confidence_or_uncertainty_note": uncertainty_note,
             "final_analgesic_recommendation": analgesic_prediction,
             "final_safety_risk_level": safety_prediction,
             "functional_phenotype": {
@@ -633,9 +761,11 @@ def predict():
             "guardrails_applied": override_notes,
             "safety_guardrail_modifications": override_notes,
             "medication_specific_warnings": medication_specific_warnings,
+            "medication_specific_impact": medication_specific_warnings,
             "dose_notes": dose_notes,
             "monitoring_alerts": monitoring_alerts,
             "explanation_rationale": explanation,
+            "pgx_rationale": explanation,
             "disclaimer": disclaimer,
         }
 

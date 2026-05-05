@@ -47,9 +47,9 @@ const TXT = {
     placeholderText: 'Enter inputs then click "Run Algorithm".',
     refsTitle: "References",
 
-    phenoPredTitle: "Functional CYP2D6 Phenotype Prediction",
+    phenoPredTitle: "CYP2D6 Functional Phenotype Module",
     phenoPredHint:
-      "Optional: use API to predict CYP2D6 phenotype and auto-fill the field above.",
+      "Enter CYP2D6 PGx inputs in one place. SCDAid derives final functional phenotype from genotype/phenoconversion when available, or ML proxy logic when genotype is incomplete.",
     sexLabel: "Sex",
     inhibitorLabel: "CYP2D6 inhibitor",
     inhibitorHint: "Examples: strong CYP2D6 inhibitors may reduce CYP2D6 activity.",
@@ -145,8 +145,8 @@ const TXT = {
     placeholderText: "ادخل البيانات ثم اضغط تشغيل الخوارزمية.",
     refsTitle: "المراجع",
 
-    phenoPredTitle: "التنبؤ الوظيفي لفينوتايب CYP2D6",
-    phenoPredHint: "اختياري: استخدمي الـ API للتنبؤ بـ CYP2D6 وتعبئة الخانة تلقائيًا.",
+    phenoPredTitle: "وحدة الفينوتايب الوظيفي CYP2D6",
+    phenoPredHint: "أدخلي بيانات CYP2D6 في مكان واحد. تستنتج SCDAid الفينوتايب الوظيفي النهائي من الجينوتايب/الـ phenoconversion عند توفره، أو من منطق ML عند نقص بيانات الجينوتايب.",
     sexLabel: "الجنس",
     inhibitorLabel: "مثبط CYP2D6",
     inhibitorHint: "مثال: بعض المثبطات القوية تقلل نشاط CYP2D6.",
@@ -878,6 +878,8 @@ function reset() {
 
   if ($("cyp2d6_allele1")) $("cyp2d6_allele1").value = "";
   if ($("cyp2d6_allele2")) $("cyp2d6_allele2").value = "";
+  if ($("cyp2d6_diplotype")) $("cyp2d6_diplotype").value = "";
+  if ($("cyp2d6_copy_number_status")) $("cyp2d6_copy_number_status").value = "unknown";
 
   if ($("oprm1_genotype")) $("oprm1_genotype").value = "";
   if ($("comt_genotype")) $("comt_genotype").value = "";
@@ -889,8 +891,9 @@ function reset() {
 
   if ($("sexInput")) $("sexInput").value = "F";
   if ($("inhibitorInput")) $("inhibitorInput").value = "no";
-  if ($("codeineRespInput")) $("codeineRespInput").value = "ineffective";
-  if ($("tramadolRespInput")) $("tramadolRespInput").value = "ineffective";
+  if ($("codeineRespInput")) $("codeineRespInput").value = "unknown";
+  if ($("tramadolRespInput")) $("tramadolRespInput").value = "unknown";
+  if ($("inflammationInput")) $("inflammationInput").value = "unknown";
 
   setPredictStatus({
     mode: "idle",
@@ -1109,9 +1112,11 @@ function initDetailedInputAutofill() {
       const severity = selected?.dataset?.severity || "none";
 
       if (severity === "custom") {
-        inflammationSeverity.value = "mild";
-      } else if (["none", "mild", "high"].includes(severity)) {
-        inflammationSeverity.value = severity;
+        inflammationSeverity.value = "unknown";
+      } else if (severity === "none") {
+        inflammationSeverity.value = "no";
+      } else if (["mild", "high"].includes(severity)) {
+        inflammationSeverity.value = "yes";
       }
     });
   }
@@ -1404,8 +1409,11 @@ function getInflammationStatus() {
 
   const severityDropdown = document.getElementById("inflammationInput");
 
-  if (severityDropdown && severityDropdown.value && severityDropdown.value !== "none") {
-    return severityDropdown.value;
+  if (severityDropdown && severityDropdown.value) {
+    const v = String(severityDropdown.value).toLowerCase();
+    if (v === "yes") return "high";
+    if (v === "no") return "none";
+    if (v === "unknown") return "unknown";
   }
 
   const inferred = inferInflammationStatusFromType(type, otherText);
@@ -1449,6 +1457,7 @@ function getToxicityOtherText() {
 
 function getPreviousOpioidToxicity() {
   const yesNo = getValue("opioidToxicityInput", "no");
+  if (yesNo === "unknown") return "unknown";
   const type = normalizeTextForMatch(getToxicityType());
   const other = normalizeTextForMatch(getToxicityOtherText());
   const combined = `${type} ${other}`;
@@ -1507,8 +1516,8 @@ function getPreviousOpioidToxicity() {
 }
 
 function getPreviousCodeineFailure() {
-  const codeineResponse = getValue("codeineRespInput", "ineffective");
-  const tramadolResponse = getValue("tramadolRespInput", "ineffective");
+  const codeineResponse = getValue("codeineRespInput", "unknown");
+  const tramadolResponse = getValue("tramadolRespInput", "unknown");
 
   if (codeineResponse === "ineffective" || tramadolResponse === "ineffective") {
     return "yes";
@@ -1741,11 +1750,17 @@ function renderSCDAidAIResult(result) {
         <h3 class="predictionSummaryTitle">SCDAid AI prediction</h3>
 
         <div class="pillRow">
-          <span class="pill info">Functional phenotype: ${formatPredictionLabel(functional.prediction)}</span>
+          <span class="pill info">Functional phenotype: ${formatPredictionLabel(result.final_cyp2d6_functional_phenotype || functional.prediction)}</span>
           <span class="pill info">Analgesic: ${formatPredictionLabel(analgesic.prediction)}</span>
           <span class="pill ${safety.prediction === "high" ? "danger" : safety.prediction === "moderate" ? "warn" : "ok"}">
             Safety risk: ${formatPredictionLabel(safety.prediction)}
           </span>
+        </div>
+
+        <div class="predictionSummaryRows">
+          <div class="predictionSummaryRow"><strong>Phenotype source:</strong> ${escapeHtmlSafe(result.phenotype_source || "ML-predicted")}</div>
+          <div class="predictionSummaryRow"><strong>Phenoconversion applied:</strong> ${escapeHtmlSafe(result.phenoconversion_applied || "no")}</div>
+          <div class="predictionSummaryRow"><strong>Uncertainty note:</strong> ${escapeHtmlSafe(result.confidence_or_uncertainty_note || "See confidence and probabilities below.")}</div>
         </div>
 
         <div class="predictionSummaryRows">
@@ -1775,7 +1790,9 @@ function renderSCDAidAIResult(result) {
 
             <div class="resultCard">
               <h4>1) Functional CYP2D6 Phenotype</h4>
-              <p><strong>Prediction:</strong> ${formatPredictionLabel(functional.prediction)}</p>
+              <p><strong>Final functional phenotype:</strong> ${formatPredictionLabel(result.final_cyp2d6_functional_phenotype || functional.prediction)}</p>
+              <p><strong>Genotype-predicted phenotype:</strong> ${escapeHtmlSafe(result.genotype_predicted_phenotype || "Not available")}</p>
+              <p><strong>ML-predicted phenotype:</strong> ${escapeHtmlSafe(result.ml_predicted_phenotype || "Not used")}</p>
               ${
                 cypTx && cypTx.ok && cypTx.cyp2d6_input_source === "alleles"
                   ? `<p class="hint">This label reflects the <strong>clinical phenotype</strong> after phenoconversion from the CPIC-based genotype-to-phenotype translation engine, not symptom-based AI.</p>`
@@ -1853,8 +1870,9 @@ async function runThreeSCDAidModels() {
   const statusBox = document.getElementById("predictStatus");
   const resultsBox = document.getElementById("results");
   const predictButton = document.getElementById("predictBtn");
+  const inputsForMode = readInputs();
 
-  const runErrs = validate(readInputs());
+  const runErrs = validate(inputsForMode);
   if (runErrs.length) {
     alert(runErrs.join("\n"));
     if (typeof setPredictStatus === "function") {
@@ -1892,7 +1910,10 @@ async function runThreeSCDAidModels() {
 
     cyp2d6_allele1: getValue("cyp2d6_allele1", "").trim(),
     cyp2d6_allele2: getValue("cyp2d6_allele2", "").trim(),
+    cyp2d6_diplotype: getValue("cyp2d6_diplotype", "").trim(),
+    cyp2d6_copy_number_status: getValue("cyp2d6_copy_number_status", "unknown"),
     cyp2d6_selected_phenotype: getValue("cyp2d6Input", "EM"),
+    cyp2d6_manual_selected: Boolean(inputsForMode.cyp2d6ManualSelection),
 
     cyp2d6_activity_score: getActivityScoreFromPhenotype(),
 
@@ -1904,6 +1925,8 @@ async function runThreeSCDAidModels() {
     inflammation_type: getInflammationType(),
     inflammation_other: getInflammationOtherText(),
 
+    previous_codeine_response: getValue("codeineRespInput", "unknown"),
+    previous_tramadol_response: getValue("tramadolRespInput", "unknown"),
     previous_codeine_failure: getPreviousCodeineFailure(),
     previous_opioid_toxicity: getPreviousOpioidToxicity(),
     opioid_toxicity_type: getToxicityType(),
